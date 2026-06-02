@@ -1,9 +1,10 @@
 import { NavLink } from "react-router"
-import { LayoutDashboard, CheckSquare, Bell, TrendingUp } from "lucide-react"
+import { LayoutDashboard, CheckSquare, Repeat, Bell, TrendingUp } from "lucide-react"
 
 const navItems = [
   { to: "/", icon: LayoutDashboard, label: "Home" },
   { to: "/tasks", icon: CheckSquare, label: "Tasks" },
+  { to: "/habits", icon: Repeat, label: "Habits" },
   { to: "/reminders", icon: Bell, label: "Reminders" },
   { to: "/investments", icon: TrendingUp, label: "Invest" },
 ]

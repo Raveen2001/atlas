@@ -24,18 +24,38 @@ export async function requestNotificationPermission(): Promise<NotificationPermi
 }
 
 export async function subscribeToPush(): Promise<PushSubscription | null> {
-  if (!("serviceWorker" in navigator)) return null
+  if (!("serviceWorker" in navigator)) {
+    console.error("[PUSH] Service workers not supported")
+    return null
+  }
   if (!VAPID_PUBLIC_KEY) {
-    console.warn("VAPID public key not configured")
+    console.error("[PUSH] VAPID public key not configured")
     return null
   }
 
+  console.log("[PUSH] VAPID key:", VAPID_PUBLIC_KEY.slice(0, 20) + "...")
+  console.log("[PUSH] Waiting for service worker ready...")
+
   const registration = await navigator.serviceWorker.ready
+  console.log("[PUSH] SW ready, scope:", registration.scope)
+
+  // Check for existing subscription first
+  const existing = await registration.pushManager.getSubscription()
+  if (existing) {
+    console.log("[PUSH] Found existing subscription, reusing")
+    return existing
+  }
+
+  console.log("[PUSH] Subscribing to push...")
+  const applicationServerKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+  console.log("[PUSH] Key bytes length:", applicationServerKey.length)
+
   const subscription = await registration.pushManager.subscribe({
     userVisibleOnly: true,
-    applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY).buffer as ArrayBuffer,
+    applicationServerKey: applicationServerKey as BufferSource,
   })
 
+  console.log("[PUSH] Subscribed:", subscription.endpoint.slice(0, 50) + "...")
   return subscription
 }
 

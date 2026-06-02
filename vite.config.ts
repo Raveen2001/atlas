@@ -18,6 +18,7 @@ export default defineConfig({
         theme_color: "#3b82f6",
         background_color: "#ffffff",
         display: "standalone",
+        ...({ gcm_sender_id: "103953800507" } as Record<string, string>),
         scope: "/",
         start_url: "/",
         icons: [
@@ -39,8 +40,12 @@ export default defineConfig({
           },
         ],
       },
+      workbox: {
+        importScripts: ["/custom-sw.js"],
+      },
       devOptions: {
         enabled: true,
+        type: "module",
       },
     }),
   ],
