@@ -15,7 +15,7 @@ export function AuthLayout() {
 
       {/* Mobile: content + bottom nav */}
       <div className="md:hidden">
-        <main className="p-4 pb-20">
+        <main className="p-4 pb-20 pt-[calc(1rem+env(safe-area-inset-top))]">
           <Outlet />
         </main>
         <BottomNav />
