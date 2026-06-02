@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react"
+import { toast } from "sonner"
 import {
   requestNotificationPermission,
   subscribeToPush,
@@ -31,13 +32,23 @@ export function usePushNotifications() {
     try {
       const perm = await requestNotificationPermission()
       setPermission(perm)
+      if (perm === "denied") {
+        toast.error("Notification permission denied. Enable it in browser settings.")
+        return
+      }
       if (perm === "granted") {
         const subscription = await subscribeToPush()
         if (subscription) {
           await saveSubscription(subscription)
           setIsSubscribed(true)
+          toast.success("Notifications enabled")
+        } else {
+          toast.error("Failed to subscribe to push notifications")
         }
       }
+    } catch (e) {
+      console.error("Push subscription error:", e)
+      toast.error("Failed to enable notifications: " + (e instanceof Error ? e.message : String(e)))
     } finally {
       setLoading(false)
     }

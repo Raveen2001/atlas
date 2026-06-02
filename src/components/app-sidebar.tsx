@@ -2,6 +2,7 @@ import { NavLink } from "react-router"
 import {
   LayoutDashboard,
   CheckSquare,
+  Repeat,
   Bell,
   TrendingUp,
   LogOut,
@@ -14,6 +15,7 @@ import { useAuth } from "@/hooks/use-auth"
 const navItems = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard" },
   { to: "/tasks", icon: CheckSquare, label: "Tasks" },
+  { to: "/habits", icon: Repeat, label: "Habits" },
   { to: "/reminders", icon: Bell, label: "Reminders" },
   { to: "/investments", icon: TrendingUp, label: "Investments" },
 ]

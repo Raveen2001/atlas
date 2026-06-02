@@ -9,6 +9,8 @@ import { DashboardPage } from "@/pages/dashboard"
 import { TasksPage } from "@/pages/tasks"
 import { RemindersPage } from "@/pages/reminders"
 import { InvestmentsPage } from "@/pages/investments"
+import { TasksClosedPage } from "@/pages/tasks-closed"
+import { HabitsPage } from "@/pages/habits"
 
 function AppRoutes() {
   const { user, loading } = useAuth()
@@ -36,6 +38,8 @@ function AppRoutes() {
       >
         <Route path="/" element={<DashboardPage />} />
         <Route path="/tasks" element={<TasksPage />} />
+        <Route path="/tasks/closed" element={<TasksClosedPage />} />
+        <Route path="/habits" element={<HabitsPage />} />
         <Route path="/reminders" element={<RemindersPage />} />
         <Route path="/investments" element={<InvestmentsPage />} />
       </Route>
