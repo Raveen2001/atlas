@@ -60,7 +60,12 @@ export function TaskCard({ task, onClick, isOverlay }: TaskCardProps) {
       )}
 
       <div className="flex items-center gap-3 text-xs text-muted-foreground">
-        {task.due_date && (
+        {task.status === "done" && task.completed_at ? (
+          <span className="flex items-center gap-1 text-green-600">
+            <Calendar className="h-3 w-3" />
+            Closed {format(new Date(task.completed_at), "MMM d")}
+          </span>
+        ) : task.due_date ? (
           <span
             className={`flex items-center gap-1 font-medium ${
               isOverdue
@@ -77,7 +82,7 @@ export function TaskCard({ task, onClick, isOverlay }: TaskCardProps) {
             {isDueSoon && daysLeft === 1 && " (1 day left)"}
             {daysLeft !== null && daysLeft > 1 && ` (${daysLeft}d left)`}
           </span>
-        )}
+        ) : null}
         {task.comment_count > 0 && (
           <span className="flex items-center gap-1">
             <MessageSquare className="h-3 w-3" />
