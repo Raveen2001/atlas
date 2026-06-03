@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { format } from "date-fns"
-import { CalendarIcon, Trash2 } from "lucide-react"
+import { CalendarIcon, Trash2, Repeat } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -26,14 +26,16 @@ import {
 import { Calendar } from "@/components/ui/calendar"
 import { TagInput } from "./tag-input"
 import { CommentSection } from "./comment-section"
+import { getRecurrenceLabel } from "@/lib/recurrence-utils"
 import type {
   Task,
   TaskFormData,
   TaskStatus,
   TaskPriority,
+  RecurrenceType,
   Tag,
 } from "@/types/tasks"
-import { STATUS_CONFIG } from "@/types/tasks"
+import { STATUS_CONFIG, WEEKDAY_LABELS } from "@/types/tasks"
 
 interface TaskDialogProps {
   open: boolean
@@ -65,6 +67,13 @@ export function TaskDialog({
   const [saving, setSaving] = useState(false)
   const [calendarOpen, setCalendarOpen] = useState(false)
 
+  // Recurring fields
+  const [isRecurring, setIsRecurring] = useState(false)
+  const [recurrenceType, setRecurrenceType] =
+    useState<RecurrenceType>("weekly")
+  const [recurrenceStartDay, setRecurrenceStartDay] = useState(1)
+  const [recurrenceDueOffset, setRecurrenceDueOffset] = useState(4)
+
   useEffect(() => {
     if (task) {
       setTitle(task.title)
@@ -73,6 +82,10 @@ export function TaskDialog({
       setPriority(task.priority)
       setDueDate(task.due_date ? new Date(task.due_date) : undefined)
       setTagIds(task.tags.map((t) => t.id))
+      setIsRecurring(task.is_recurring)
+      setRecurrenceType(task.recurrence_type ?? "weekly")
+      setRecurrenceStartDay(task.recurrence_start_day ?? 1)
+      setRecurrenceDueOffset(task.recurrence_due_offset ?? 4)
     } else {
       setTitle("")
       setDescription("")
@@ -80,6 +93,10 @@ export function TaskDialog({
       setPriority("medium")
       setDueDate(undefined)
       setTagIds([])
+      setIsRecurring(false)
+      setRecurrenceType("weekly")
+      setRecurrenceStartDay(1)
+      setRecurrenceDueOffset(4)
     }
   }, [task, defaultStatus, open])
 
@@ -95,6 +112,10 @@ export function TaskDialog({
           priority,
           due_date: dueDate ? format(dueDate, "yyyy-MM-dd") : null,
           tag_ids: tagIds,
+          is_recurring: isRecurring,
+          recurrence_type: isRecurring ? recurrenceType : null,
+          recurrence_start_day: isRecurring ? recurrenceStartDay : null,
+          recurrence_due_offset: isRecurring ? recurrenceDueOffset : null,
         },
         task?.status,
       )
@@ -146,13 +167,19 @@ export function TaskDialog({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <label className="text-sm font-medium">Status</label>
-              <Select value={status} onValueChange={(v) => setStatus(v as TaskStatus)}>
+              <Select
+                value={status}
+                onValueChange={(v) => setStatus(v as TaskStatus)}
+              >
                 <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {(
-                    Object.entries(STATUS_CONFIG) as [TaskStatus, { label: string }][]
+                    Object.entries(STATUS_CONFIG) as [
+                      TaskStatus,
+                      { label: string },
+                    ][]
                   ).map(([value, { label }]) => (
                     <SelectItem key={value} value={value}>
                       {label}
@@ -164,7 +191,10 @@ export function TaskDialog({
 
             <div className="space-y-1.5">
               <label className="text-sm font-medium">Priority</label>
-              <Select value={priority} onValueChange={(v) => setPriority(v as TaskPriority)}>
+              <Select
+                value={priority}
+                onValueChange={(v) => setPriority(v as TaskPriority)}
+              >
                 <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
@@ -222,6 +252,109 @@ export function TaskDialog({
               tags={tags}
               onCreateTag={onCreateTag}
             />
+          </div>
+
+          {/* Recurring section */}
+          <div className="space-y-3 border-t pt-4">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isRecurring}
+                onChange={(e) => setIsRecurring(e.target.checked)}
+                className="rounded"
+              />
+              <Repeat className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium">Make recurring</span>
+            </label>
+
+            {isRecurring && (
+              <div className="space-y-3 pl-6">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Frequency
+                  </label>
+                  <Select
+                    value={recurrenceType}
+                    onValueChange={(v) =>
+                      setRecurrenceType(v as RecurrenceType)
+                    }
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="weekly">Weekly</SelectItem>
+                      <SelectItem value="monthly">Monthly</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">
+                    {recurrenceType === "weekly"
+                      ? "Reopens on"
+                      : "Day of month"}
+                  </label>
+                  {recurrenceType === "weekly" ? (
+                    <div className="flex gap-1">
+                      {WEEKDAY_LABELS.map((day) => (
+                        <button
+                          key={day.value}
+                          type="button"
+                          onClick={() => setRecurrenceStartDay(day.value)}
+                          className={`h-8 w-8 rounded-full text-xs font-medium transition-colors ${
+                            recurrenceStartDay === day.value
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-muted text-muted-foreground hover:bg-muted/80"
+                          }`}
+                        >
+                          {day.short}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <Input
+                      type="number"
+                      min={1}
+                      max={28}
+                      value={recurrenceStartDay}
+                      onChange={(e) =>
+                        setRecurrenceStartDay(
+                          Math.min(28, Math.max(1, Number(e.target.value))),
+                        )
+                      }
+                      className="w-20"
+                    />
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Due after (days)
+                  </label>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={30}
+                    value={recurrenceDueOffset}
+                    onChange={(e) =>
+                      setRecurrenceDueOffset(
+                        Math.min(30, Math.max(0, Number(e.target.value))),
+                      )
+                    }
+                    className="w-20"
+                  />
+                </div>
+
+                <p className="text-xs text-muted-foreground italic">
+                  {getRecurrenceLabel(
+                    recurrenceType,
+                    recurrenceStartDay,
+                    recurrenceDueOffset,
+                  )}
+                </p>
+              </div>
+            )}
           </div>
 
           {task && (
