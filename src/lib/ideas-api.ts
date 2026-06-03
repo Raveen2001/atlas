@@ -1,5 +1,5 @@
 import { supabase } from "./supabase";
-import type { Idea, IdeaFormData } from "@/types/ideas";
+import type { Idea, IdeaFormData, IdeaComment } from "@/types/ideas";
 
 export async function fetchIdeas(userId: string): Promise<Idea[]> {
   const { data, error } = await supabase
@@ -23,6 +23,7 @@ export async function createIdea(
       user_id: userId,
       title: formData.title,
       description: formData.description || null,
+      status: formData.status,
     })
     .select()
     .single();
@@ -39,6 +40,7 @@ export async function updateIdea(
   if (formData.title !== undefined) updates.title = formData.title;
   if (formData.description !== undefined)
     updates.description = formData.description || null;
+  if (formData.status !== undefined) updates.status = formData.status;
 
   if (Object.keys(updates).length > 0) {
     const { error } = await supabase
@@ -62,5 +64,43 @@ export async function togglePin(
     .from("ideas")
     .update({ pinned })
     .eq("id", ideaId);
+  if (error) throw error;
+}
+
+// ── Comments ────────────────────────────────────────────────
+
+export async function fetchIdeaComments(
+  ideaId: string,
+): Promise<IdeaComment[]> {
+  const { data, error } = await supabase
+    .from("idea_comments")
+    .select("*")
+    .eq("idea_id", ideaId)
+    .order("created_at");
+
+  if (error) throw error;
+  return (data ?? []) as IdeaComment[];
+}
+
+export async function addIdeaComment(
+  ideaId: string,
+  userId: string,
+  content: string,
+): Promise<IdeaComment> {
+  const { data, error } = await supabase
+    .from("idea_comments")
+    .insert({ idea_id: ideaId, user_id: userId, content })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as IdeaComment;
+}
+
+export async function deleteIdeaComment(commentId: string): Promise<void> {
+  const { error } = await supabase
+    .from("idea_comments")
+    .delete()
+    .eq("id", commentId);
   if (error) throw error;
 }

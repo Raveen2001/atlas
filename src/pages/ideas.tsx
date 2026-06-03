@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { IdeaCard } from "@/components/ideas/idea-card";
+import { IdeaComments } from "@/components/ideas/idea-comments";
 import { IdeaDialog } from "@/components/ideas/idea-dialog";
 import { useIdeas } from "@/hooks/use-ideas";
 import type { Idea, IdeaFormData } from "@/types/ideas";
@@ -12,6 +13,7 @@ export function IdeasPage() {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingIdea, setEditingIdea] = useState<Idea | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const handleSave = async (data: IdeaFormData) => {
     if (editingIdea) {
@@ -42,6 +44,25 @@ export function IdeasPage() {
   const pinned = ideas.filter((i) => i.pinned);
   const unpinned = ideas.filter((i) => !i.pinned);
 
+  const renderIdea = (idea: Idea) => (
+    <div key={idea.id}>
+      <IdeaCard
+        idea={idea}
+        onEdit={() => openEdit(idea)}
+        onTogglePin={() => togglePin(idea.id, !idea.pinned)}
+        expanded={expandedId === idea.id}
+        onExpand={() =>
+          setExpandedId(expandedId === idea.id ? null : idea.id)
+        }
+      />
+      {expandedId === idea.id && (
+        <div className="mt-1 ml-2 border-l-2 border-muted pl-3 py-2">
+          <IdeaComments ideaId={idea.id} />
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <>
       <div className="space-y-6 max-w-2xl">
@@ -58,16 +79,7 @@ export function IdeasPage() {
             <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
               Pinned
             </h2>
-            <div className="space-y-2">
-              {pinned.map((idea) => (
-                <IdeaCard
-                  key={idea.id}
-                  idea={idea}
-                  onEdit={() => openEdit(idea)}
-                  onTogglePin={() => togglePin(idea.id, false)}
-                />
-              ))}
-            </div>
+            <div className="space-y-2">{pinned.map(renderIdea)}</div>
           </div>
         )}
 
@@ -78,16 +90,7 @@ export function IdeasPage() {
                 All
               </h2>
             )}
-            <div className="space-y-2">
-              {unpinned.map((idea) => (
-                <IdeaCard
-                  key={idea.id}
-                  idea={idea}
-                  onEdit={() => openEdit(idea)}
-                  onTogglePin={() => togglePin(idea.id, true)}
-                />
-              ))}
-            </div>
+            <div className="space-y-2">{unpinned.map(renderIdea)}</div>
           </div>
         )}
 
