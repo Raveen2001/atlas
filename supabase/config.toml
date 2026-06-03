@@ -377,3 +377,9 @@ entrypoint = "./functions/recurring-tasks/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/recurring-tasks/*.html" ]
+
+[functions.investment-reminders]
+enabled = true
+verify_jwt = true
+import_map = "./functions/investment-reminders/deno.json"
+entrypoint = "./functions/investment-reminders/index.ts"
