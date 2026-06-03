@@ -1,7 +1,7 @@
 import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import { format, isPast, isToday, differenceInCalendarDays } from "date-fns"
-import { MessageSquare, Calendar } from "lucide-react"
+import { MessageSquare, Calendar, Repeat } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { TagBadge } from "./tag-badge"
 import { PriorityBadge } from "./priority-badge"
@@ -82,6 +82,11 @@ export function TaskCard({ task, onClick, isOverlay }: TaskCardProps) {
           <span className="flex items-center gap-1">
             <MessageSquare className="h-3 w-3" />
             {task.comment_count}
+          </span>
+        )}
+        {task.is_recurring && (
+          <span className="flex items-center gap-1 text-blue-500">
+            <Repeat className="h-3 w-3" />
           </span>
         )}
       </div>

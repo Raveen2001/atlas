@@ -9,6 +9,8 @@ export interface Tag {
   created_at: string
 }
 
+export type RecurrenceType = "weekly" | "monthly"
+
 export interface Task {
   id: string
   user_id: string
@@ -19,6 +21,11 @@ export interface Task {
   due_date: string | null
   position: number
   completed_at: string | null
+  is_recurring: boolean
+  recurrence_type: RecurrenceType | null
+  recurrence_start_day: number | null
+  recurrence_due_offset: number | null
+  next_recurrence_date: string | null
   created_at: string
   updated_at: string
   tags: Tag[]
@@ -40,7 +47,21 @@ export interface TaskFormData {
   priority: TaskPriority
   due_date: string | null
   tag_ids: string[]
+  is_recurring: boolean
+  recurrence_type: RecurrenceType | null
+  recurrence_start_day: number | null
+  recurrence_due_offset: number | null
 }
+
+export const WEEKDAY_LABELS: { value: number; label: string; short: string }[] = [
+  { value: 1, label: "Monday", short: "M" },
+  { value: 2, label: "Tuesday", short: "T" },
+  { value: 3, label: "Wednesday", short: "W" },
+  { value: 4, label: "Thursday", short: "T" },
+  { value: 5, label: "Friday", short: "F" },
+  { value: 6, label: "Saturday", short: "S" },
+  { value: 7, label: "Sunday", short: "S" },
+]
 
 export const KANBAN_COLUMNS: TaskStatus[] = [
   "todo",

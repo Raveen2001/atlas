@@ -1,4 +1,5 @@
 import { supabase } from "./supabase"
+import { computeNextRecurrenceDate } from "./recurrence-utils"
 import type {
   Task,
   Tag,
@@ -87,6 +88,10 @@ export async function createTask(
       due_date: formData.due_date,
       position,
       completed_at: formData.status === "done" ? new Date().toISOString() : null,
+      is_recurring: formData.is_recurring ?? false,
+      recurrence_type: formData.is_recurring ? formData.recurrence_type : null,
+      recurrence_start_day: formData.is_recurring ? formData.recurrence_start_day : null,
+      recurrence_due_offset: formData.is_recurring ? formData.recurrence_due_offset : null,
     })
     .select()
     .single()
@@ -120,12 +125,38 @@ export async function updateTask(
   if (formData.priority !== undefined) updates.priority = formData.priority
   if (formData.due_date !== undefined) updates.due_date = formData.due_date
 
+  if (formData.is_recurring !== undefined) {
+    updates.is_recurring = formData.is_recurring
+    updates.recurrence_type = formData.is_recurring ? formData.recurrence_type : null
+    updates.recurrence_start_day = formData.is_recurring ? formData.recurrence_start_day : null
+    updates.recurrence_due_offset = formData.is_recurring ? formData.recurrence_due_offset : null
+  }
+
   if (formData.status !== undefined) {
     updates.status = formData.status
     if (formData.status === "done" && previousStatus !== "done") {
       updates.completed_at = new Date().toISOString()
     } else if (formData.status !== "done" && previousStatus === "done") {
       updates.completed_at = null
+      updates.next_recurrence_date = null
+    }
+  }
+
+  // Compute next_recurrence_date if moving to done and task is recurring
+  if (formData.status === "done" && previousStatus !== "done") {
+    // Fetch task to check recurring config
+    const { data: task } = await supabase
+      .from("tasks")
+      .select("is_recurring, recurrence_type, recurrence_start_day")
+      .eq("id", taskId)
+      .single()
+
+    const isRecurring = formData.is_recurring ?? task?.is_recurring
+    const recType = formData.recurrence_type ?? task?.recurrence_type
+    const startDay = formData.recurrence_start_day ?? task?.recurrence_start_day
+
+    if (isRecurring && recType && startDay) {
+      updates.next_recurrence_date = computeNextRecurrenceDate(recType, startDay)
     }
   }
 
@@ -165,8 +196,23 @@ export async function moveTask(
 
   if (newStatus === "done" && previousStatus !== "done") {
     updates.completed_at = new Date().toISOString()
+
+    // Check if task is recurring and compute next recurrence
+    const { data: task } = await supabase
+      .from("tasks")
+      .select("is_recurring, recurrence_type, recurrence_start_day")
+      .eq("id", taskId)
+      .single()
+
+    if (task?.is_recurring && task.recurrence_type && task.recurrence_start_day) {
+      updates.next_recurrence_date = computeNextRecurrenceDate(
+        task.recurrence_type,
+        task.recurrence_start_day,
+      )
+    }
   } else if (newStatus !== "done" && previousStatus === "done") {
     updates.completed_at = null
+    updates.next_recurrence_date = null
   }
 
   const { error } = await supabase
