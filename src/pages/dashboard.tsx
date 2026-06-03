@@ -3,12 +3,14 @@ import { PushPrompt } from "@/components/push-prompt"
 import { useAuth } from "@/hooks/use-auth"
 import { useHabits } from "@/hooks/use-habits"
 import { useInvestments } from "@/hooks/use-investments"
+import { useReminders } from "@/hooks/use-reminders"
 import { formatPnl, getPnlColor } from "@/lib/investment-utils"
 
 export function DashboardPage() {
   const { user } = useAuth()
   const { todayDue, todayCompleted } = useHabits()
   const { todayLog, stats } = useInvestments()
+  const { active } = useReminders()
   const firstName = user?.user_metadata?.full_name?.split(" ")[0] ?? "there"
 
   return (
@@ -54,7 +56,7 @@ export function DashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold font-mono">0</p>
+            <p className="text-3xl font-bold font-mono">{active.length}</p>
           </CardContent>
         </Card>
 
