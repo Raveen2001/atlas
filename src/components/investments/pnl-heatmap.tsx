@@ -1,4 +1,4 @@
-import { useMemo } from "react"
+import { useMemo, useRef, useEffect } from "react"
 import {
   format,
   subDays,
@@ -28,11 +28,11 @@ const LOSS_COLOR = "#dc2626"
 
 function getIntensity(amount: number, maxAbs: number): number {
   if (maxAbs === 0) return 0.4
-  // Map to 0.2–1.0 range for visible opacity
   return 0.2 + (Math.abs(amount) / maxAbs) * 0.8
 }
 
 export function PnlHeatmap({ logs, days = 365 }: PnlHeatmapProps) {
+  const scrollRef = useRef<HTMLDivElement>(null)
   const endDate = new Date()
   const startDate = subDays(endDate, days)
 
@@ -72,33 +72,39 @@ export function PnlHeatmap({ logs, days = 365 }: PnlHeatmapProps) {
     }
   }
 
+  // Auto-scroll to show the current day (rightmost)
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollLeft = scrollRef.current.scrollWidth
+    }
+  }, [data])
+
   return (
-    <div className="overflow-x-auto">
+    <div ref={scrollRef} className="overflow-x-auto">
       <TooltipProvider delay={100}>
-        <div className="inline-block">
+        <div style={{ width: "fit-content" }}>
           {/* Month labels */}
           <div
-            className="flex text-xs text-muted-foreground mb-1"
-            style={{ paddingLeft: 24 }}
+            className="flex text-xs text-muted-foreground mb-1 relative"
+            style={{ paddingLeft: 24, height: 16 }}
           >
             {monthLabels.map((m, i) => (
               <span
                 key={i}
-                style={{
-                  position: "relative",
-                  left: m.weekIndex * (CELL_SIZE + CELL_GAP),
-                }}
                 className="absolute"
+                style={{
+                  left: 24 + m.weekIndex * (CELL_SIZE + CELL_GAP),
+                }}
               >
                 {m.label}
               </span>
             ))}
           </div>
 
-          <div className="flex gap-0.5 mt-5">
+          <div className="flex gap-0.5">
             {/* Day labels */}
             <div
-              className="flex flex-col justify-between text-xs text-muted-foreground pr-1"
+              className="flex flex-col justify-between text-xs text-muted-foreground pr-1 shrink-0"
               style={{ height: 7 * (CELL_SIZE + CELL_GAP) - CELL_GAP }}
             >
               <span style={{ height: CELL_SIZE, lineHeight: `${CELL_SIZE}px` }} />
@@ -144,14 +150,11 @@ export function PnlHeatmap({ logs, days = 365 }: PnlHeatmapProps) {
                     let opacity = 1
 
                     if (weekend) {
-                      // Weekends: dimmer muted
                       bg = "var(--color-muted)"
                       opacity = 0.4
                     } else if (amount === null) {
-                      // Weekday, not logged
                       bg = "var(--color-muted)"
                     } else if (amount === 0) {
-                      // Break-even: neutral
                       bg = "var(--color-muted)"
                     } else if (amount > 0) {
                       bg = PROFIT_COLOR

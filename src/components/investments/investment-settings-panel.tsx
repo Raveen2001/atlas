@@ -1,19 +1,23 @@
-import { useState, useEffect, useCallback } from "react"
-import { Card, CardContent } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import type { InvestmentSettings, InvestmentSettingsFormData } from "@/types/investments"
-import { DEFAULT_SETTINGS } from "@/types/investments"
+import { useState, useEffect, useCallback } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import type {
+  InvestmentSettings,
+  InvestmentSettingsFormData,
+} from "@/types/investments";
+import { DEFAULT_SETTINGS } from "@/types/investments";
 
 interface InvestmentSettingsPanelProps {
-  settings: InvestmentSettings | null
-  onUpdate: (data: InvestmentSettingsFormData) => Promise<void>
+  settings: InvestmentSettings | null;
+  onUpdate: (data: InvestmentSettingsFormData) => Promise<void>;
 }
 
 export function InvestmentSettingsPanel({
   settings,
   onUpdate,
 }: InvestmentSettingsPanelProps) {
-  const [form, setForm] = useState<InvestmentSettingsFormData>(DEFAULT_SETTINGS)
+  const [form, setForm] =
+    useState<InvestmentSettingsFormData>(DEFAULT_SETTINGS);
 
   useEffect(() => {
     if (settings) {
@@ -24,18 +28,18 @@ export function InvestmentSettingsPanel({
         log_reminder_time: settings.log_reminder_time.slice(0, 5),
         followup_enabled: settings.followup_enabled,
         end_of_day_time: settings.end_of_day_time.slice(0, 5),
-      })
+      });
     }
-  }, [settings])
+  }, [settings]);
 
   const save = useCallback(
     (updates: Partial<InvestmentSettingsFormData>) => {
-      const updated = { ...form, ...updates }
-      setForm(updated)
-      onUpdate(updated)
+      const updated = { ...form, ...updates };
+      setForm(updated);
+      onUpdate(updated);
     },
     [form, onUpdate],
-  )
+  );
 
   return (
     <Card>
@@ -92,7 +96,7 @@ export function InvestmentSettingsPanel({
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
 
 function ReminderRow({
@@ -103,12 +107,12 @@ function ReminderRow({
   time,
   onTimeChange,
 }: {
-  label: string
-  description: string
-  enabled: boolean
-  onToggle: (v: boolean) => void
-  time: string
-  onTimeChange: (v: string) => void
+  label: string;
+  description: string;
+  enabled: boolean;
+  onToggle: (v: boolean) => void;
+  time: string;
+  onTimeChange: (v: string) => void;
 }) {
   return (
     <div className="space-y-2">
@@ -128,15 +132,15 @@ function ReminderRow({
         />
       )}
     </div>
-  )
+  );
 }
 
 function ToggleButton({
   enabled,
   onToggle,
 }: {
-  enabled: boolean
-  onToggle: (v: boolean) => void
+  enabled: boolean;
+  onToggle: (v: boolean) => void;
 }) {
   return (
     <button
@@ -152,5 +156,5 @@ function ToggleButton({
         }`}
       />
     </button>
-  )
+  );
 }
