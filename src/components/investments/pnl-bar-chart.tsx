@@ -20,7 +20,7 @@ interface PnlBarChartProps {
   logs: InvestmentLog[]
 }
 
-const BAR_HEIGHT = 120 // max bar area height in px
+const HALF_HEIGHT = 50 // max bar height in one direction (px)
 
 export function PnlBarChart({ logs }: PnlBarChartProps) {
   const { days, maxAbs } = useMemo(() => {
@@ -57,46 +57,52 @@ export function PnlBarChart({ logs }: PnlBarChartProps) {
 
   return (
     <TooltipProvider delay={100}>
-      <div className="flex items-end gap-1" style={{ height: BAR_HEIGHT }}>
+      <div className="flex gap-1">
         {days.map((day) => {
-          const barHeight =
+          const barH =
             day.amount !== null
-              ? Math.max((Math.abs(day.amount) / maxAbs) * (BAR_HEIGHT / 2 - 4), 2)
+              ? Math.max((Math.abs(day.amount) / maxAbs) * HALF_HEIGHT, 3)
               : 0
           const isProfit = day.amount !== null && day.amount >= 0
-          const dayNum = format(day.date, "d")
 
           return (
             <Tooltip key={day.dateStr}>
-              <TooltipTrigger className="flex flex-col items-center flex-1 min-w-0">
+              <TooltipTrigger
+                className="flex flex-col items-center flex-1"
+                style={{ minWidth: 8 }}
+              >
+                {/* Profit area (grows upward) */}
                 <div
-                  className="relative flex flex-col justify-center"
-                  style={{ height: BAR_HEIGHT - 16 }}
+                  className="w-full flex items-end justify-center"
+                  style={{ height: HALF_HEIGHT }}
                 >
-                  {/* Zero line at center */}
-                  {day.amount !== null ? (
+                  {day.amount !== null && isProfit && (
                     <div
-                      className="absolute left-0 right-0 rounded-sm"
-                      style={{
-                        height: barHeight,
-                        ...(isProfit
-                          ? { bottom: "50%", backgroundColor: "#16a34a" }
-                          : { top: "50%", backgroundColor: "#dc2626" }),
-                      }}
-                    />
-                  ) : (
-                    <div
-                      className="absolute left-0 right-0 rounded-sm bg-muted"
-                      style={{
-                        height: 2,
-                        top: "50%",
-                        transform: "translateY(-50%)",
-                      }}
+                      className="w-full max-w-3 rounded-t-sm"
+                      style={{ height: barH, backgroundColor: "#16a34a" }}
                     />
                   )}
                 </div>
-                <span className="text-[9px] text-muted-foreground mt-0.5 leading-none">
-                  {dayNum}
+
+                {/* Zero line */}
+                <div className="w-full h-px bg-border" />
+
+                {/* Loss area (grows downward) */}
+                <div
+                  className="w-full flex items-start justify-center"
+                  style={{ height: HALF_HEIGHT }}
+                >
+                  {day.amount !== null && !isProfit && (
+                    <div
+                      className="w-full max-w-3 rounded-b-sm"
+                      style={{ height: barH, backgroundColor: "#dc2626" }}
+                    />
+                  )}
+                </div>
+
+                {/* Day label */}
+                <span className="text-[9px] text-muted-foreground mt-1 leading-none">
+                  {format(day.date, "d")}
                 </span>
               </TooltipTrigger>
               <TooltipContent side="top" className="text-xs">
