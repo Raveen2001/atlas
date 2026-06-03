@@ -31,8 +31,8 @@ export function KanbanColumn({
   const { label, color } = STATUS_CONFIG[status]
 
   return (
-    <div className="flex flex-col flex-1 min-w-56 h-full rounded-lg border bg-muted/30">
-      <div className="flex items-center gap-2 px-2 py-3">
+    <div className="flex flex-col flex-1 min-w-48 h-full rounded-md border bg-muted/30">
+      <div className="flex items-center gap-2 px-2 py-2">
         <span className={color}>{STATUS_ICONS[status]}</span>
         <h3 className="text-sm font-semibold">{label}</h3>
         <span className="text-xs text-muted-foreground rounded-full bg-muted px-2 py-0.5">
@@ -49,7 +49,7 @@ export function KanbanColumn({
       <ScrollArea className="flex-1">
         <div
           ref={setNodeRef}
-          className={`space-y-2 p-2 min-h-24 rounded-lg transition-colors ${
+          className={`space-y-2 px-1.5 pb-2 min-h-24 rounded-md transition-colors ${
             isOver ? "bg-accent/50" : ""
           }`}
         >

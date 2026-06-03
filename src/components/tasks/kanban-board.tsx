@@ -165,7 +165,7 @@ export function KanbanBoard() {
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <div className="flex gap-4 overflow-x-auto pb-4 h-[calc(100vh-8rem)]">
+        <div className="flex gap-2 overflow-x-auto pb-4 h-[calc(100dvh-10rem)] md:h-[calc(100dvh-8rem)]">
           {KANBAN_COLUMNS.map((status) => (
             <KanbanColumn
               key={status}
