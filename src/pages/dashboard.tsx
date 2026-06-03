@@ -1,17 +1,26 @@
+import { useNavigate } from "react-router"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { PushPrompt } from "@/components/push-prompt"
 import { useAuth } from "@/hooks/use-auth"
+import { useTasks } from "@/hooks/use-tasks"
 import { useHabits } from "@/hooks/use-habits"
 import { useInvestments } from "@/hooks/use-investments"
 import { useReminders } from "@/hooks/use-reminders"
+import { useIdeas } from "@/hooks/use-ideas"
 import { formatPnl, getPnlColor } from "@/lib/investment-utils"
 
 export function DashboardPage() {
+  const navigate = useNavigate()
   const { user } = useAuth()
+  const { columns } = useTasks()
   const { todayDue, todayCompleted } = useHabits()
   const { todayLog, stats } = useInvestments()
   const { active } = useReminders()
+  const { ideas } = useIdeas()
   const firstName = user?.user_metadata?.full_name?.split(" ")[0] ?? "there"
+
+  const openTasks =
+    columns.todo.length + columns.in_progress.length + columns.blocked.length
 
   return (
     <div className="space-y-6">
@@ -21,19 +30,25 @@ export function DashboardPage() {
 
       <PushPrompt />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <Card
+          className="cursor-pointer hover:bg-muted/50 transition-colors"
+          onClick={() => navigate("/tasks")}
+        >
           <CardHeader>
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Tasks
+              Open Tasks
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold font-mono">0</p>
+            <p className="text-3xl font-bold font-mono">{openTasks}</p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card
+          className="cursor-pointer hover:bg-muted/50 transition-colors"
+          onClick={() => navigate("/habits")}
+        >
           <CardHeader>
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Habits Today
@@ -49,7 +64,10 @@ export function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card
+          className="cursor-pointer hover:bg-muted/50 transition-colors"
+          onClick={() => navigate("/reminders")}
+        >
           <CardHeader>
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Reminders
@@ -60,7 +78,10 @@ export function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card
+          className="cursor-pointer hover:bg-muted/50 transition-colors"
+          onClick={() => navigate("/investments")}
+        >
           <CardHeader>
             <CardTitle className="text-sm font-medium text-muted-foreground">
               {todayLog ? "Today's P&L" : "All Time P&L"}
@@ -74,6 +95,20 @@ export function DashboardPage() {
                   ? formatPnl(stats.allTime)
                   : "0"}
             </p>
+          </CardContent>
+        </Card>
+
+        <Card
+          className="cursor-pointer hover:bg-muted/50 transition-colors"
+          onClick={() => navigate("/ideas")}
+        >
+          <CardHeader>
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Ideas
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-3xl font-bold font-mono">{ideas.length}</p>
           </CardContent>
         </Card>
       </div>
