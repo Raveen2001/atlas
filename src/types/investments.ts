@@ -1,0 +1,58 @@
+export interface InvestmentLog {
+  id: string
+  user_id: string
+  logged_date: string // "YYYY-MM-DD"
+  pnl_amount: number
+  note: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface InvestmentSettings {
+  id: string
+  user_id: string
+  buy_reminder_enabled: boolean
+  buy_reminder_time: string // "HH:MM:SS"
+  log_reminder_enabled: boolean
+  log_reminder_time: string
+  followup_enabled: boolean
+  end_of_day_time: string
+  created_at: string
+  updated_at: string
+}
+
+export interface InvestmentFormData {
+  logged_date: string
+  pnl_amount: number
+  note: string
+}
+
+export interface InvestmentSettingsFormData {
+  buy_reminder_enabled: boolean
+  buy_reminder_time: string // "HH:MM"
+  log_reminder_enabled: boolean
+  log_reminder_time: string
+  followup_enabled: boolean
+  end_of_day_time: string
+}
+
+export interface InvestmentStats {
+  yesterday: number | null
+  thisWeek: number
+  thisMonth: number
+  allTime: number
+  totalDays: number
+  profitDays: number
+  lossDays: number
+  bestDay: number
+  worstDay: number
+}
+
+export const DEFAULT_SETTINGS: InvestmentSettingsFormData = {
+  buy_reminder_enabled: true,
+  buy_reminder_time: "15:25",
+  log_reminder_enabled: true,
+  log_reminder_time: "16:00",
+  followup_enabled: true,
+  end_of_day_time: "23:00",
+}
