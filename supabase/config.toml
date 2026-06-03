@@ -383,3 +383,9 @@ enabled = true
 verify_jwt = true
 import_map = "./functions/investment-reminders/deno.json"
 entrypoint = "./functions/investment-reminders/index.ts"
+
+[functions.custom-reminders]
+enabled = true
+verify_jwt = true
+import_map = "./functions/custom-reminders/deno.json"
+entrypoint = "./functions/custom-reminders/index.ts"
