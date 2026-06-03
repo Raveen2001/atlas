@@ -2,10 +2,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { PushPrompt } from "@/components/push-prompt"
 import { useAuth } from "@/hooks/use-auth"
 import { useHabits } from "@/hooks/use-habits"
+import { useInvestments } from "@/hooks/use-investments"
+import { formatPnl, getPnlColor } from "@/lib/investment-utils"
 
 export function DashboardPage() {
   const { user } = useAuth()
   const { todayDue, todayCompleted } = useHabits()
+  const { todayLog, stats } = useInvestments()
   const firstName = user?.user_metadata?.full_name?.split(" ")[0] ?? "there"
 
   return (
@@ -58,11 +61,17 @@ export function DashboardPage() {
         <Card>
           <CardHeader>
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Investments
+              {todayLog ? "Today's P&L" : "All Time P&L"}
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold font-mono">0</p>
+            <p className={`text-3xl font-bold font-mono ${getPnlColor(todayLog ? todayLog.pnl_amount : stats.allTime)}`}>
+              {todayLog
+                ? formatPnl(todayLog.pnl_amount)
+                : stats.totalDays > 0
+                  ? formatPnl(stats.allTime)
+                  : "0"}
+            </p>
           </CardContent>
         </Card>
       </div>
