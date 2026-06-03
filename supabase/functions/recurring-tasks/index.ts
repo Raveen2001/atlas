@@ -69,6 +69,13 @@ Deno.serve(async (_req) => {
           console.error(`[RECURRING-TASKS] ✗ "${task.title}":`, updateError)
           failed++
         } else {
+          // Add auto-comment for the reopened recurring task
+          const dateLabel = now.format("D MMM YYYY")
+          await supabase.from("task_comments").insert({
+            task_id: task.id,
+            user_id: task.user_id,
+            content: `Auto-reopened on ${dateLabel} — new cycle, due ${moment(dueDateStr).format("D MMM YYYY")}`,
+          })
           console.log(`[RECURRING-TASKS] ✓ Reopened "${task.title}" → due ${dueDateStr}`)
           reopened++
         }

@@ -147,7 +147,7 @@ export async function updateTask(
     // Fetch task to check recurring config
     const { data: task } = await supabase
       .from("tasks")
-      .select("is_recurring, recurrence_type, recurrence_start_day")
+      .select("is_recurring, recurrence_type, recurrence_start_day, user_id")
       .eq("id", taskId)
       .single()
 
@@ -157,6 +157,26 @@ export async function updateTask(
 
     if (isRecurring && recType && startDay) {
       updates.next_recurrence_date = computeNextRecurrenceDate(recType, startDay)
+    }
+
+    // Auto-comment for recurring tasks
+    if (isRecurring && task?.user_id) {
+      const date = new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+      await addComment(taskId, task.user_id, `Completed on ${date}`)
+    }
+  }
+
+  // Auto-comment for recurring tasks reopened manually
+  if (formData.status !== undefined && formData.status !== "done" && previousStatus === "done") {
+    const { data: task } = await supabase
+      .from("tasks")
+      .select("is_recurring, user_id")
+      .eq("id", taskId)
+      .single()
+
+    if (task?.is_recurring && task?.user_id) {
+      const date = new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+      await addComment(taskId, task.user_id, `Reopened on ${date} — not completed`)
     }
   }
 
@@ -200,7 +220,7 @@ export async function moveTask(
     // Check if task is recurring and compute next recurrence
     const { data: task } = await supabase
       .from("tasks")
-      .select("is_recurring, recurrence_type, recurrence_start_day")
+      .select("is_recurring, recurrence_type, recurrence_start_day, user_id")
       .eq("id", taskId)
       .single()
 
@@ -210,9 +230,27 @@ export async function moveTask(
         task.recurrence_start_day,
       )
     }
+
+    // Auto-comment for recurring tasks
+    if (task?.is_recurring && task?.user_id) {
+      const date = new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+      await addComment(taskId, task.user_id, `Completed on ${date}`)
+    }
   } else if (newStatus !== "done" && previousStatus === "done") {
     updates.completed_at = null
     updates.next_recurrence_date = null
+
+    // Auto-comment for recurring tasks reopened manually
+    const { data: task } = await supabase
+      .from("tasks")
+      .select("is_recurring, user_id")
+      .eq("id", taskId)
+      .single()
+
+    if (task?.is_recurring && task?.user_id) {
+      const date = new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+      await addComment(taskId, task.user_id, `Reopened on ${date} — not completed`)
+    }
   }
 
   const { error } = await supabase
