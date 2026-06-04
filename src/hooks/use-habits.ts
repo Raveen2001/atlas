@@ -88,31 +88,54 @@ export function useHabits() {
     [],
   )
 
-  const toggleToday = useCallback(
-    async (habitId: string) => {
+  const toggleDate = useCallback(
+    async (habitId: string, date: string) => {
       if (!user) return
       const today = format(new Date(), "yyyy-MM-dd")
 
-      // Optimistic update
-      const isDone = todayLogs.some((l) => l.habit_id === habitId)
-      if (isDone) {
-        setTodayLogs((prev) => prev.filter((l) => l.habit_id !== habitId))
+      // Optimistic update on allLogs
+      const existsInAll = allLogs.some(
+        (l) => l.habit_id === habitId && l.logged_date === date,
+      )
+      if (existsInAll) {
+        setAllLogs((prev) =>
+          prev.filter(
+            (l) => !(l.habit_id === habitId && l.logged_date === date),
+          ),
+        )
       } else {
-        setTodayLogs((prev) => [
+        setAllLogs((prev) => [
           ...prev,
           {
-            id: "temp-" + habitId,
+            id: "temp-" + habitId + "-" + date,
             habit_id: habitId,
             user_id: user.id,
-            logged_date: today,
+            logged_date: date,
             created_at: new Date().toISOString(),
           },
         ])
       }
 
+      // If toggling today, also update todayLogs
+      if (date === today) {
+        if (existsInAll) {
+          setTodayLogs((prev) => prev.filter((l) => l.habit_id !== habitId))
+        } else {
+          setTodayLogs((prev) => [
+            ...prev,
+            {
+              id: "temp-" + habitId,
+              habit_id: habitId,
+              user_id: user.id,
+              logged_date: today,
+              created_at: new Date().toISOString(),
+            },
+          ])
+        }
+      }
+
       try {
-        await api.toggleHabitLog(habitId, user.id, today)
-        // Refetch logs to get accurate IDs
+        await api.toggleHabitLog(habitId, user.id, date)
         const [updatedToday, updatedAll] = await Promise.all([
           api.fetchTodayLogs(user.id),
           api.fetchAllHabitLogs(
@@ -124,13 +147,19 @@ export function useHabits() {
         setTodayLogs(updatedToday)
         setAllLogs(updatedAll)
       } catch (e) {
-        // Rollback
         await fetchAll()
         toast.error("Failed to update habit")
         console.error(e)
       }
     },
-    [user, todayLogs, fetchAll],
+    [user, allLogs, fetchAll],
+  )
+
+  const toggleToday = useCallback(
+    async (habitId: string) => {
+      await toggleDate(habitId, format(new Date(), "yyyy-MM-dd"))
+    },
+    [toggleDate],
   )
 
   const habitsWithStats: HabitWithStats[] = useMemo(
@@ -168,6 +197,7 @@ export function useHabits() {
     updateHabit,
     deleteHabit,
     toggleToday,
+    toggleDate,
     refetch: fetchAll,
   }
 }

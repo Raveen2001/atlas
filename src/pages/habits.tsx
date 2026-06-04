@@ -17,7 +17,7 @@ export function HabitsPage() {
     createHabit,
     updateHabit,
     deleteHabit,
-    toggleToday,
+    toggleDate,
   } = useHabits()
 
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -98,8 +98,7 @@ export function HabitsPage() {
                   <div key={habit.id}>
                     <HabitCard
                       habit={habit}
-                      isDueToday
-                      onToggle={() => toggleToday(habit.id)}
+                      onToggleDate={(date) => toggleDate(habit.id, date)}
                       expanded={expandedId === habit.id}
                       onExpand={() =>
                         setExpandedId(
@@ -132,8 +131,7 @@ export function HabitsPage() {
                 <div key={habit.id}>
                   <HabitCard
                     habit={habit}
-                    isDueToday={false}
-                    onToggle={() => {}}
+                    onToggleDate={(date) => toggleDate(habit.id, date)}
                     expanded={expandedId === habit.id}
                     onExpand={() =>
                       setExpandedId(
