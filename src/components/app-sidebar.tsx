@@ -6,6 +6,7 @@ import {
   Bell,
   TrendingUp,
   Lightbulb,
+  LineChart,
   Trophy,
   LogOut,
 } from "lucide-react"
@@ -20,6 +21,7 @@ const navItems = [
   { to: "/habits", icon: Repeat, label: "Habits" },
   { to: "/reminders", icon: Bell, label: "Reminders" },
   { to: "/investments", icon: TrendingUp, label: "Investments" },
+  { to: "/tracker", icon: LineChart, label: "Tracker" },
   { to: "/ideas", icon: Lightbulb, label: "Ideas" },
   { to: "/achievements", icon: Trophy, label: "Achievements" },
 ]
