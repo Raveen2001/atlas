@@ -13,6 +13,8 @@ import { TasksClosedPage } from "@/pages/tasks-closed"
 import { HabitsPage } from "@/pages/habits"
 import { IdeasPage } from "@/pages/ideas"
 import { AchievementsPage } from "@/pages/achievements"
+import { TrackerPage } from "@/pages/tracker"
+import { TrackerDetailPage } from "@/pages/tracker-detail"
 
 function AppRoutes() {
   const { user, loading } = useAuth()
@@ -46,6 +48,8 @@ function AppRoutes() {
         <Route path="/investments" element={<InvestmentsPage />} />
         <Route path="/ideas" element={<IdeasPage />} />
         <Route path="/achievements" element={<AchievementsPage />} />
+        <Route path="/tracker" element={<TrackerPage />} />
+        <Route path="/tracker/:categoryId" element={<TrackerDetailPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

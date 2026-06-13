@@ -1,5 +1,5 @@
 import { NavLink } from "react-router"
-import { LayoutDashboard, CheckSquare, Repeat, Bell, TrendingUp, Lightbulb, Trophy } from "lucide-react"
+import { LayoutDashboard, CheckSquare, Repeat, Bell, TrendingUp, Lightbulb, LineChart, Trophy } from "lucide-react"
 
 const navItems = [
   { to: "/", icon: LayoutDashboard, label: "Home" },
@@ -7,6 +7,7 @@ const navItems = [
   { to: "/habits", icon: Repeat, label: "Habits" },
   { to: "/reminders", icon: Bell, label: "Reminders" },
   { to: "/investments", icon: TrendingUp, label: "Invest" },
+  { to: "/tracker", icon: LineChart, label: "Tracker" },
   { to: "/ideas", icon: Lightbulb, label: "Ideas" },
   { to: "/achievements", icon: Trophy, label: "Wins" },
 ]
