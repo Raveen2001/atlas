@@ -6,6 +6,7 @@ import {
   Bell,
   TrendingUp,
   Lightbulb,
+  Trophy,
   LogOut,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -20,6 +21,7 @@ const navItems = [
   { to: "/reminders", icon: Bell, label: "Reminders" },
   { to: "/investments", icon: TrendingUp, label: "Investments" },
   { to: "/ideas", icon: Lightbulb, label: "Ideas" },
+  { to: "/achievements", icon: Trophy, label: "Achievements" },
 ]
 
 export function AppSidebar() {
