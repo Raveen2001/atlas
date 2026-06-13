@@ -12,6 +12,7 @@ import { InvestmentsPage } from "@/pages/investments"
 import { TasksClosedPage } from "@/pages/tasks-closed"
 import { HabitsPage } from "@/pages/habits"
 import { IdeasPage } from "@/pages/ideas"
+import { AchievementsPage } from "@/pages/achievements"
 
 function AppRoutes() {
   const { user, loading } = useAuth()
@@ -44,6 +45,7 @@ function AppRoutes() {
         <Route path="/reminders" element={<RemindersPage />} />
         <Route path="/investments" element={<InvestmentsPage />} />
         <Route path="/ideas" element={<IdeasPage />} />
+        <Route path="/achievements" element={<AchievementsPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

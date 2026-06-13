@@ -7,6 +7,7 @@ import { useHabits } from "@/hooks/use-habits"
 import { useInvestments } from "@/hooks/use-investments"
 import { useReminders } from "@/hooks/use-reminders"
 import { useIdeas } from "@/hooks/use-ideas"
+import { useAchievements } from "@/hooks/use-achievements"
 import { formatPnl, getPnlColor } from "@/lib/investment-utils"
 
 export function DashboardPage() {
@@ -17,6 +18,7 @@ export function DashboardPage() {
   const { todayLog, stats } = useInvestments()
   const { active } = useReminders()
   const { ideas } = useIdeas()
+  const { achievements } = useAchievements()
   const firstName = user?.user_metadata?.full_name?.split(" ")[0] ?? "there"
 
   const openTasks =
@@ -109,6 +111,20 @@ export function DashboardPage() {
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold font-mono">{ideas.length}</p>
+          </CardContent>
+        </Card>
+
+        <Card
+          className="cursor-pointer hover:bg-muted/50 transition-colors"
+          onClick={() => navigate("/achievements")}
+        >
+          <CardHeader>
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Achievements
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-3xl font-bold font-mono">{achievements.length}</p>
           </CardContent>
         </Card>
       </div>
