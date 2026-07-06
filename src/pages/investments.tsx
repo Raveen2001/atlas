@@ -1,14 +1,22 @@
-import { useState } from "react"
-import { format } from "date-fns"
+import { useState, useMemo } from "react"
+import { format, startOfMonth } from "date-fns"
 import { Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { PnlLogDialog } from "@/components/investments/pnl-log-dialog"
 import { PnlStats } from "@/components/investments/pnl-stats"
 import { PnlHeatmap } from "@/components/investments/pnl-heatmap"
 import { PnlBarChart } from "@/components/investments/pnl-bar-chart"
+import { MonthNavigator } from "@/components/investments/month-navigator"
+import { ReturnsComparisonChart } from "@/components/investments/returns-comparison-chart"
 import { InvestmentSettingsPanel } from "@/components/investments/investment-settings-panel"
 import { useInvestments } from "@/hooks/use-investments"
-import { formatPnl, getPnlColor } from "@/lib/investment-utils"
+import {
+  formatPnl,
+  getPnlColor,
+  formatReturnsPct,
+  getReturnsColor,
+  getReturnsComparisonData,
+} from "@/lib/investment-utils"
 import type { InvestmentLog, InvestmentFormData } from "@/types/investments"
 
 export function InvestmentsPage() {
@@ -25,6 +33,22 @@ export function InvestmentsPage() {
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingLog, setEditingLog] = useState<InvestmentLog | null>(null)
+  const [selectedMonth, setSelectedMonth] = useState(startOfMonth(new Date()))
+
+  const returnsData = useMemo(
+    () => getReturnsComparisonData(logs, selectedMonth),
+    [logs, selectedMonth],
+  )
+
+  const monthComparableDays = returnsData.filter(
+    (d) => d.returns_pct != null && d.nifty50_pct != null,
+  ).length
+
+  const monthBeatDays = returnsData.filter(
+    (d) => d.returns_pct != null && d.nifty50_pct != null && d.returns_pct > d.nifty50_pct,
+  ).length
+
+  const hasReturnsData = returnsData.some((d) => d.hasData)
 
   const openCreate = () => {
     setEditingLog(null)
@@ -75,6 +99,18 @@ export function InvestmentsPage() {
             <p className={`text-2xl font-bold font-mono ${getPnlColor(todayLog.pnl_amount)}`}>
               {formatPnl(todayLog.pnl_amount)}
             </p>
+            {todayLog.returns_pct != null && todayLog.nifty50_pct != null && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Returns{" "}
+                <span className={getReturnsColor(todayLog.returns_pct)}>
+                  {formatReturnsPct(todayLog.returns_pct)}
+                </span>
+                {" "}vs Nifty{" "}
+                <span className={getReturnsColor(todayLog.nifty50_pct)}>
+                  {formatReturnsPct(todayLog.nifty50_pct)}
+                </span>
+              </p>
+            )}
             {todayLog.note && (
               <p className="text-xs text-muted-foreground mt-1">{todayLog.note}</p>
             )}
@@ -97,13 +133,34 @@ export function InvestmentsPage() {
           <PnlStats stats={stats} />
         </section>
 
-        {/* Current month bar chart */}
+        {/* Month bar chart with navigation */}
         {logs.length > 0 && (
           <section className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                P&L
+              </h2>
+              <MonthNavigator
+                month={selectedMonth}
+                onMonthChange={setSelectedMonth}
+                logs={logs}
+              />
+            </div>
+            <PnlBarChart logs={logs} month={selectedMonth} />
+          </section>
+        )}
+
+        {/* Returns vs Nifty 50 */}
+        {logs.length > 0 && hasReturnsData && (
+          <section className="space-y-3">
             <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-              {format(new Date(), "MMMM yyyy")}
+              Returns vs Nifty 50
             </h2>
-            <PnlBarChart logs={logs} />
+            <ReturnsComparisonChart
+              data={returnsData}
+              beatDays={monthBeatDays}
+              comparableDays={monthComparableDays}
+            />
           </section>
         )}
 
@@ -135,6 +192,17 @@ export function InvestmentsPage() {
                     <p className="text-sm">
                       {format(new Date(log.logged_date + "T00:00:00"), "EEE, MMM d")}
                     </p>
+                    {log.returns_pct != null && log.nifty50_pct != null && (
+                      <p className="text-xs text-muted-foreground">
+                        <span className={getReturnsColor(log.returns_pct)}>
+                          {formatReturnsPct(log.returns_pct)}
+                        </span>
+                        {" / "}
+                        <span className={getReturnsColor(log.nifty50_pct)}>
+                          {formatReturnsPct(log.nifty50_pct)}
+                        </span>
+                      </p>
+                    )}
                     {log.note && (
                       <p className="text-xs text-muted-foreground truncate max-w-[200px]">
                         {log.note}

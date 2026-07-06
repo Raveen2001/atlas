@@ -31,6 +31,8 @@ export function PnlLogDialog({
   const [amount, setAmount] = useState("")
   const [isProfit, setIsProfit] = useState(true)
   const [logDate, setLogDate] = useState(format(new Date(), "yyyy-MM-dd"))
+  const [returnsPct, setReturnsPct] = useState("")
+  const [nifty50Pct, setNifty50Pct] = useState("")
   const [note, setNote] = useState("")
   const [saving, setSaving] = useState(false)
 
@@ -40,11 +42,15 @@ export function PnlLogDialog({
       setAmount(absAmount.toString())
       setIsProfit(existingLog.pnl_amount >= 0)
       setLogDate(existingLog.logged_date)
+      setReturnsPct(existingLog.returns_pct != null ? existingLog.returns_pct.toString() : "")
+      setNifty50Pct(existingLog.nifty50_pct != null ? existingLog.nifty50_pct.toString() : "")
       setNote(existingLog.note ?? "")
     } else {
       setAmount("")
       setIsProfit(true)
       setLogDate(format(new Date(), "yyyy-MM-dd"))
+      setReturnsPct("")
+      setNifty50Pct("")
       setNote("")
     }
   }, [existingLog, open])
@@ -54,9 +60,13 @@ export function PnlLogDialog({
     if (!amount || isNaN(parsed)) return
     setSaving(true)
     try {
+      const parsedReturns = returnsPct.trim() !== "" ? parseFloat(returnsPct) : null
+      const parsedNifty = nifty50Pct.trim() !== "" ? parseFloat(nifty50Pct) : null
       await onSave({
         logged_date: logDate,
         pnl_amount: isProfit ? Math.abs(parsed) : -Math.abs(parsed),
+        returns_pct: parsedReturns != null && !isNaN(parsedReturns) ? parsedReturns : null,
+        nifty50_pct: parsedNifty != null && !isNaN(parsedNifty) ? parsedNifty : null,
         note: note.trim(),
       })
       onOpenChange(false)
@@ -126,6 +136,31 @@ export function PnlLogDialog({
                 }
               }}
             />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Your Returns %</label>
+              <Input
+                type="number"
+                inputMode="decimal"
+                step="0.01"
+                placeholder="e.g. 1.25"
+                value={returnsPct}
+                onChange={(e) => setReturnsPct(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Nifty 50 %</label>
+              <Input
+                type="number"
+                inputMode="decimal"
+                step="0.01"
+                placeholder="e.g. 0.85"
+                value={nifty50Pct}
+                onChange={(e) => setNifty50Pct(e.target.value)}
+              />
+            </div>
           </div>
 
           <div className="space-y-1.5">

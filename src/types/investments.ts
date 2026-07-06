@@ -3,6 +3,8 @@ export interface InvestmentLog {
   user_id: string
   logged_date: string // "YYYY-MM-DD"
   pnl_amount: number
+  returns_pct: number | null
+  nifty50_pct: number | null
   note: string | null
   created_at: string
   updated_at: string
@@ -24,6 +26,8 @@ export interface InvestmentSettings {
 export interface InvestmentFormData {
   logged_date: string
   pnl_amount: number
+  returns_pct: number | null
+  nifty50_pct: number | null
   note: string
 }
 
@@ -46,6 +50,9 @@ export interface InvestmentStats {
   lossDays: number
   bestDay: number
   worstDay: number
+  comparableDays: number
+  beatNiftyDays: number
+  beatNiftyRate: number
 }
 
 export const DEFAULT_SETTINGS: InvestmentSettingsFormData = {

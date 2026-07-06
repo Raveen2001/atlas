@@ -6,6 +6,7 @@ import {
   eachDayOfInterval,
   isWeekend,
   isFuture,
+  isThisMonth,
 } from "date-fns"
 import {
   Tooltip,
@@ -18,15 +19,17 @@ import type { InvestmentLog } from "@/types/investments"
 
 interface PnlBarChartProps {
   logs: InvestmentLog[]
+  month?: Date
 }
 
 const HALF_HEIGHT = 50 // max bar height in one direction (px)
 
-export function PnlBarChart({ logs }: PnlBarChartProps) {
+export function PnlBarChart({ logs, month }: PnlBarChartProps) {
   const { days, maxAbs } = useMemo(() => {
-    const today = new Date()
-    const monthStart = startOfMonth(today)
-    const monthEnd = endOfMonth(today)
+    const target = month ?? new Date()
+    const viewingCurrentMonth = isThisMonth(target)
+    const monthStart = startOfMonth(target)
+    const monthEnd = endOfMonth(target)
     const allDays = eachDayOfInterval({ start: monthStart, end: monthEnd })
 
     const logMap = new Map<string, number>()
@@ -35,7 +38,7 @@ export function PnlBarChart({ logs }: PnlBarChartProps) {
     }
 
     const tradingDays = allDays
-      .filter((d) => !isWeekend(d) && !isFuture(d))
+      .filter((d) => !isWeekend(d) && (!viewingCurrentMonth || !isFuture(d)))
       .map((d) => {
         const dateStr = format(d, "yyyy-MM-dd")
         return {

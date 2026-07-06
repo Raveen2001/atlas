@@ -21,6 +21,8 @@ export async function fetchInvestmentLogs(
   return (data ?? []).map((row) => ({
     ...row,
     pnl_amount: Number(row.pnl_amount),
+    returns_pct: row.returns_pct != null ? Number(row.returns_pct) : null,
+    nifty50_pct: row.nifty50_pct != null ? Number(row.nifty50_pct) : null,
   })) as InvestmentLog[];
 }
 
@@ -37,6 +39,8 @@ export async function upsertInvestmentLog(
         user_id: userId,
         logged_date: formData.logged_date,
         pnl_amount: formData.pnl_amount,
+        returns_pct: formData.returns_pct ?? null,
+        nifty50_pct: formData.nifty50_pct ?? null,
         note: formData.note || null,
       },
       { onConflict: "user_id,logged_date" },
@@ -45,7 +49,12 @@ export async function upsertInvestmentLog(
     .single();
 
   if (error) throw error;
-  return { ...data, pnl_amount: Number(data.pnl_amount) } as InvestmentLog;
+  return {
+    ...data,
+    pnl_amount: Number(data.pnl_amount),
+    returns_pct: data.returns_pct != null ? Number(data.returns_pct) : null,
+    nifty50_pct: data.nifty50_pct != null ? Number(data.nifty50_pct) : null,
+  } as InvestmentLog;
 }
 
 export async function deleteInvestmentLog(logId: string): Promise<void> {

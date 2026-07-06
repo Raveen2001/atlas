@@ -38,11 +38,21 @@ export function PnlStats({ stats }: PnlStatsProps) {
       </div>
 
       {stats.totalDays > 0 && (
-        <div className="flex items-center gap-4 text-xs text-muted-foreground px-1">
-          <span>{stats.totalDays} days traded</span>
-          <span className="text-green-600">{stats.profitDays}W</span>
-          <span className="text-red-600">{stats.lossDays}L</span>
-          <span>{winRate}% win rate</span>
+        <div className="flex flex-col gap-1 text-xs text-muted-foreground px-1">
+          <div className="flex items-center gap-4">
+            <span>{stats.totalDays} days traded</span>
+            <span className="text-green-600">{stats.profitDays}W</span>
+            <span className="text-red-600">{stats.lossDays}L</span>
+            <span>{winRate}% win rate</span>
+          </div>
+          {stats.comparableDays > 0 && (
+            <div className="flex items-center gap-1">
+              <span>Beat Nifty 50:</span>
+              <span className="text-green-600 font-medium">{stats.beatNiftyDays}</span>
+              <span>/ {stats.comparableDays} days</span>
+              <span className="text-muted-foreground">({stats.beatNiftyRate}%)</span>
+            </div>
+          )}
         </div>
       )}
     </div>
