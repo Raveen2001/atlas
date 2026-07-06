@@ -92,7 +92,7 @@ export function ReturnsComparisonChart({
         </p>
       )}
 
-      <TooltipProvider delayDuration={100}>
+      <TooltipProvider delay={100}>
         <div className="relative w-full" style={{ height: SVG_HEIGHT }}>
           <svg
             width="100%"
@@ -158,33 +158,31 @@ export function ReturnsComparisonChart({
               }
               return (
                 <Tooltip key={entry.dateStr}>
-                  <TooltipTrigger asChild>
-                    <g className="cursor-default">
-                      {/* invisible hit area */}
-                      <rect
-                        x={Math.max(0, x - 12)}
-                        y={PADDING_TOP}
-                        width={24}
-                        height={CHART_HEIGHT}
-                        fill="transparent"
+                  <TooltipTrigger render={<g className="cursor-default" />}>
+                    {/* invisible hit area */}
+                    <rect
+                      x={Math.max(0, x - 12)}
+                      y={PADDING_TOP}
+                      width={24}
+                      height={CHART_HEIGHT}
+                      fill="transparent"
+                    />
+                    {hasYou && (
+                      <circle
+                        cx={x}
+                        cy={toY(entry.returns_pct!)}
+                        r={3}
+                        fill={YOU_COLOR}
                       />
-                      {hasYou && (
-                        <circle
-                          cx={x}
-                          cy={toY(entry.returns_pct!)}
-                          r={3}
-                          fill={YOU_COLOR}
-                        />
-                      )}
-                      {hasNifty && (
-                        <circle
-                          cx={x}
-                          cy={toY(entry.nifty50_pct!)}
-                          r={3}
-                          fill={NIFTY_COLOR}
-                        />
-                      )}
-                    </g>
+                    )}
+                    {hasNifty && (
+                      <circle
+                        cx={x}
+                        cy={toY(entry.nifty50_pct!)}
+                        r={3}
+                        fill={NIFTY_COLOR}
+                      />
+                    )}
                   </TooltipTrigger>
                   <TooltipContent side="top" className="text-xs space-y-1">
                     <p className="font-medium">{format(entry.date, "MMM d, EEE")}</p>
