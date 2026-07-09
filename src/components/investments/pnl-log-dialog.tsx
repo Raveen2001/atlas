@@ -32,7 +32,9 @@ export function PnlLogDialog({
   const [isProfit, setIsProfit] = useState(true)
   const [logDate, setLogDate] = useState(format(new Date(), "yyyy-MM-dd"))
   const [returnsPct, setReturnsPct] = useState("")
+  const [returnsPositive, setReturnsPositive] = useState(true)
   const [nifty50Pct, setNifty50Pct] = useState("")
+  const [niftyPositive, setNiftyPositive] = useState(true)
   const [note, setNote] = useState("")
   const [saving, setSaving] = useState(false)
 
@@ -42,15 +44,29 @@ export function PnlLogDialog({
       setAmount(absAmount.toString())
       setIsProfit(existingLog.pnl_amount >= 0)
       setLogDate(existingLog.logged_date)
-      setReturnsPct(existingLog.returns_pct != null ? existingLog.returns_pct.toString() : "")
-      setNifty50Pct(existingLog.nifty50_pct != null ? existingLog.nifty50_pct.toString() : "")
+      if (existingLog.returns_pct != null) {
+        setReturnsPct(Math.abs(existingLog.returns_pct).toString())
+        setReturnsPositive(existingLog.returns_pct >= 0)
+      } else {
+        setReturnsPct("")
+        setReturnsPositive(true)
+      }
+      if (existingLog.nifty50_pct != null) {
+        setNifty50Pct(Math.abs(existingLog.nifty50_pct).toString())
+        setNiftyPositive(existingLog.nifty50_pct >= 0)
+      } else {
+        setNifty50Pct("")
+        setNiftyPositive(true)
+      }
       setNote(existingLog.note ?? "")
     } else {
       setAmount("")
       setIsProfit(true)
       setLogDate(format(new Date(), "yyyy-MM-dd"))
       setReturnsPct("")
+      setReturnsPositive(true)
       setNifty50Pct("")
+      setNiftyPositive(true)
       setNote("")
     }
   }, [existingLog, open])
@@ -65,8 +81,14 @@ export function PnlLogDialog({
       await onSave({
         logged_date: logDate,
         pnl_amount: isProfit ? Math.abs(parsed) : -Math.abs(parsed),
-        returns_pct: parsedReturns != null && !isNaN(parsedReturns) ? parsedReturns : null,
-        nifty50_pct: parsedNifty != null && !isNaN(parsedNifty) ? parsedNifty : null,
+        returns_pct:
+          parsedReturns != null && !isNaN(parsedReturns)
+            ? returnsPositive ? Math.abs(parsedReturns) : -Math.abs(parsedReturns)
+            : null,
+        nifty50_pct:
+          parsedNifty != null && !isNaN(parsedNifty)
+            ? niftyPositive ? Math.abs(parsedNifty) : -Math.abs(parsedNifty)
+            : null,
         note: note.trim(),
       })
       onOpenChange(false)
@@ -141,25 +163,53 @@ export function PnlLogDialog({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <label className="text-sm font-medium">Your Returns %</label>
-              <Input
-                type="number"
-                inputMode="decimal"
-                step="0.01"
-                placeholder="e.g. 1.25"
-                value={returnsPct}
-                onChange={(e) => setReturnsPct(e.target.value)}
-              />
+              <div className="flex gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setReturnsPositive((p) => !p)}
+                  className={`h-9 w-9 shrink-0 rounded-md text-sm font-bold transition-colors ${
+                    returnsPositive
+                      ? "bg-green-600 text-white"
+                      : "bg-red-600 text-white"
+                  }`}
+                >
+                  {returnsPositive ? "+" : "−"}
+                </button>
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  value={returnsPct}
+                  onChange={(e) => setReturnsPct(e.target.value)}
+                />
+              </div>
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium">Nifty 50 %</label>
-              <Input
-                type="number"
-                inputMode="decimal"
-                step="0.01"
-                placeholder="e.g. 0.85"
-                value={nifty50Pct}
-                onChange={(e) => setNifty50Pct(e.target.value)}
-              />
+              <div className="flex gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setNiftyPositive((p) => !p)}
+                  className={`h-9 w-9 shrink-0 rounded-md text-sm font-bold transition-colors ${
+                    niftyPositive
+                      ? "bg-green-600 text-white"
+                      : "bg-red-600 text-white"
+                  }`}
+                >
+                  {niftyPositive ? "+" : "−"}
+                </button>
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  value={nifty50Pct}
+                  onChange={(e) => setNifty50Pct(e.target.value)}
+                />
+              </div>
             </div>
           </div>
 
