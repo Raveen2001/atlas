@@ -1,18 +1,16 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { toast } from "sonner";
 import { exchangeKiteRequestToken } from "@/lib/kite-api";
 
+const processedTokens = new Set<string>();
+
 export function KiteCallbackPage() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
-  const ran = useRef(false);
   const [message, setMessage] = useState("Connecting to Kite…");
 
   useEffect(() => {
-    if (ran.current) return;
-    ran.current = true;
-
     const status = params.get("status");
     const requestToken = params.get("request_token");
 
@@ -27,6 +25,9 @@ export function KiteCallbackPage() {
       navigate("/", { replace: true });
       return;
     }
+
+    if (processedTokens.has(requestToken)) return;
+    processedTokens.add(requestToken);
 
     exchangeKiteRequestToken(requestToken)
       .then((res) => {

@@ -15,17 +15,25 @@ self.addEventListener("push", (event) => {
 self.addEventListener("notificationclick", (event) => {
   event.notification.close()
   const url = event.notification.data?.url ?? "/"
+  const isExternal = /^https?:\/\//i.test(url) && !url.startsWith(self.location.origin)
+
   event.waitUntil(
-    self.clients
-      .matchAll({ type: "window", includeUncontrolled: true })
-      .then((clients) => {
-        for (const client of clients) {
-          if (client.url.includes(self.location.origin) && "focus" in client) {
-            client.navigate(url)
-            return client.focus()
-          }
+    (async () => {
+      // External URLs always open in a new window; navigate() only works same-origin.
+      if (isExternal) {
+        await self.clients.openWindow(url)
+        return
+      }
+
+      const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true })
+      for (const client of clients) {
+        if (client.url.startsWith(self.location.origin) && "focus" in client) {
+          await client.navigate(url)
+          await client.focus()
+          return
         }
-        return self.clients.openWindow(url)
-      })
+      }
+      await self.clients.openWindow(url)
+    })()
   )
 })
