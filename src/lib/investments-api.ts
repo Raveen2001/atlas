@@ -65,6 +65,7 @@ export async function upsertInvestmentLog(
         logged_date: formData.logged_date,
         pnl_amount: formData.pnl_amount,
         stock_pct: formData.stock_pct ?? null,
+        mf_pct: formData.mf_pct ?? null,
         nifty50_pct: formData.nifty50_pct ?? null,
         note: formData.note || null,
       },

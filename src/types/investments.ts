@@ -43,6 +43,7 @@ export interface InvestmentFormData {
   logged_date: string
   pnl_amount: number
   stock_pct: number | null
+  mf_pct: number | null
   nifty50_pct: number | null
   note: string
 }

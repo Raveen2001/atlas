@@ -54,7 +54,7 @@ export function PnlBarChart({ logs, month }: PnlBarChartProps) {
     const max = amounts.length > 0 ? Math.max(...amounts.map(Math.abs)) : 1
 
     return { days: tradingDays, maxAbs: max || 1 }
-  }, [logs])
+  }, [logs, month])
 
   if (days.length === 0) return null
 

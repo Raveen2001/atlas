@@ -33,6 +33,8 @@ export function PnlLogDialog({
   const [logDate, setLogDate] = useState(format(new Date(), "yyyy-MM-dd"))
   const [stockPct, setStockPct] = useState("")
   const [stockPositive, setStockPositive] = useState(true)
+  const [mfPct, setMfPct] = useState("")
+  const [mfPositive, setMfPositive] = useState(true)
   const [nifty50Pct, setNifty50Pct] = useState("")
   const [niftyPositive, setNiftyPositive] = useState(true)
   const [note, setNote] = useState("")
@@ -51,6 +53,13 @@ export function PnlLogDialog({
         setStockPct("")
         setStockPositive(true)
       }
+      if (existingLog.mf_pct != null) {
+        setMfPct(Math.abs(existingLog.mf_pct).toString())
+        setMfPositive(existingLog.mf_pct >= 0)
+      } else {
+        setMfPct("")
+        setMfPositive(true)
+      }
       if (existingLog.nifty50_pct != null) {
         setNifty50Pct(Math.abs(existingLog.nifty50_pct).toString())
         setNiftyPositive(existingLog.nifty50_pct >= 0)
@@ -65,6 +74,8 @@ export function PnlLogDialog({
       setLogDate(format(new Date(), "yyyy-MM-dd"))
       setStockPct("")
       setStockPositive(true)
+      setMfPct("")
+      setMfPositive(true)
       setNifty50Pct("")
       setNiftyPositive(true)
       setNote("")
@@ -77,6 +88,7 @@ export function PnlLogDialog({
     setSaving(true)
     try {
       const parsedStock = stockPct.trim() !== "" ? parseFloat(stockPct) : null
+      const parsedMf = mfPct.trim() !== "" ? parseFloat(mfPct) : null
       const parsedNifty = nifty50Pct.trim() !== "" ? parseFloat(nifty50Pct) : null
       await onSave({
         logged_date: logDate,
@@ -84,6 +96,10 @@ export function PnlLogDialog({
         stock_pct:
           parsedStock != null && !isNaN(parsedStock)
             ? stockPositive ? Math.abs(parsedStock) : -Math.abs(parsedStock)
+            : null,
+        mf_pct:
+          parsedMf != null && !isNaN(parsedMf)
+            ? mfPositive ? Math.abs(parsedMf) : -Math.abs(parsedMf)
             : null,
         nifty50_pct:
           parsedNifty != null && !isNaN(parsedNifty)
@@ -160,9 +176,9 @@ export function PnlLogDialog({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-2">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Stock Returns %</label>
+              <label className="text-sm font-medium">Stock %</label>
               <div className="flex gap-1.5">
                 <button
                   type="button"
@@ -183,11 +199,38 @@ export function PnlLogDialog({
                   placeholder="0.00"
                   value={stockPct}
                   onChange={(e) => setStockPct(e.target.value)}
+                  className="min-w-0"
                 />
               </div>
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Nifty 50 %</label>
+              <label className="text-sm font-medium">MF %</label>
+              <div className="flex gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setMfPositive((p) => !p)}
+                  className={`h-9 w-9 shrink-0 rounded-md text-sm font-bold transition-colors ${
+                    mfPositive
+                      ? "bg-green-600 text-white"
+                      : "bg-red-600 text-white"
+                  }`}
+                >
+                  {mfPositive ? "+" : "−"}
+                </button>
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  value={mfPct}
+                  onChange={(e) => setMfPct(e.target.value)}
+                  className="min-w-0"
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Nifty %</label>
               <div className="flex gap-1.5">
                 <button
                   type="button"
@@ -208,6 +251,7 @@ export function PnlLogDialog({
                   placeholder="0.00"
                   value={nifty50Pct}
                   onChange={(e) => setNifty50Pct(e.target.value)}
+                  className="min-w-0"
                 />
               </div>
             </div>
