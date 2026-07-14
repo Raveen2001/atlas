@@ -20,7 +20,8 @@ const PADDING_TOP = 12
 const PADDING_BOTTOM = 24 // room for day labels
 const CHART_HEIGHT = SVG_HEIGHT - PADDING_TOP - PADDING_BOTTOM
 
-const YOU_COLOR = "#16a34a"
+const STOCK_COLOR = "#16a34a"
+const MF_COLOR = "#f59e0b"
 const NIFTY_COLOR = "#6366f1"
 const ZERO_COLOR = "hsl(var(--border))"
 
@@ -32,7 +33,8 @@ export function ReturnsComparisonChart({
   const { points, yMin, yMax, hasAnyData } = useMemo(() => {
     const allValues: number[] = []
     for (const d of data) {
-      if (d.returns_pct != null) allValues.push(d.returns_pct)
+      if (d.stock_pct != null) allValues.push(d.stock_pct)
+      if (d.mf_pct != null) allValues.push(d.mf_pct)
       if (d.nifty50_pct != null) allValues.push(d.nifty50_pct)
     }
 
@@ -111,13 +113,26 @@ export function ReturnsComparisonChart({
               strokeWidth={1}
             />
 
-            {/* Your returns line segments */}
-            {buildLine((e) => e.returns_pct, 800).map((pts, i) => (
+            {/* Stock returns line segments */}
+            {buildLine((e) => e.stock_pct, 800).map((pts, i) => (
               <polyline
-                key={`you-${i}`}
+                key={`stock-${i}`}
                 points={pts}
                 fill="none"
-                stroke={YOU_COLOR}
+                stroke={STOCK_COLOR}
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            ))}
+
+            {/* MF returns line segments */}
+            {buildLine((e) => e.mf_pct, 800).map((pts, i) => (
+              <polyline
+                key={`mf-${i}`}
+                points={pts}
+                fill="none"
+                stroke={MF_COLOR}
                 strokeWidth={2}
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -140,9 +155,10 @@ export function ReturnsComparisonChart({
             {/* Dots + tooltips for each trading day */}
             {points.map((entry, i) => {
               const x = n > 1 ? (i / (n - 1)) * 800 : 400
-              const hasYou = entry.returns_pct != null
+              const hasStock = entry.stock_pct != null
+              const hasMf = entry.mf_pct != null
               const hasNifty = entry.nifty50_pct != null
-              if (!hasYou && !hasNifty) {
+              if (!hasStock && !hasMf && !hasNifty) {
                 return (
                   <g key={entry.dateStr}>
                     {/* invisible hit area */}
@@ -167,12 +183,20 @@ export function ReturnsComparisonChart({
                       height={CHART_HEIGHT}
                       fill="transparent"
                     />
-                    {hasYou && (
+                    {hasStock && (
                       <circle
                         cx={x}
-                        cy={toY(entry.returns_pct!)}
+                        cy={toY(entry.stock_pct!)}
                         r={3}
-                        fill={YOU_COLOR}
+                        fill={STOCK_COLOR}
+                      />
+                    )}
+                    {hasMf && (
+                      <circle
+                        cx={x}
+                        cy={toY(entry.mf_pct!)}
+                        r={3}
+                        fill={MF_COLOR}
                       />
                     )}
                     {hasNifty && (
@@ -186,10 +210,16 @@ export function ReturnsComparisonChart({
                   </TooltipTrigger>
                   <TooltipContent side="top" className="text-xs space-y-1">
                     <p className="font-medium">{format(entry.date, "MMM d, EEE")}</p>
-                    {hasYou && (
+                    {hasStock && (
                       <p>
-                        <span className="text-green-600">You:</span>{" "}
-                        {formatReturnsPct(entry.returns_pct!)}
+                        <span className="text-green-600">Stocks:</span>{" "}
+                        {formatReturnsPct(entry.stock_pct!)}
+                      </p>
+                    )}
+                    {hasMf && (
+                      <p>
+                        <span className="text-amber-500">MF:</span>{" "}
+                        {formatReturnsPct(entry.mf_pct!)}
                       </p>
                     )}
                     {hasNifty && (
@@ -198,9 +228,9 @@ export function ReturnsComparisonChart({
                         {formatReturnsPct(entry.nifty50_pct!)}
                       </p>
                     )}
-                    {hasYou && hasNifty && (
-                      <p className={entry.returns_pct! > entry.nifty50_pct! ? "text-green-600" : "text-red-500"}>
-                        {entry.returns_pct! > entry.nifty50_pct! ? "Outperformed" : entry.returns_pct! < entry.nifty50_pct! ? "Underperformed" : "Matched"}
+                    {hasStock && hasNifty && (
+                      <p className={entry.stock_pct! > entry.nifty50_pct! ? "text-green-600" : "text-red-500"}>
+                        {entry.stock_pct! > entry.nifty50_pct! ? "Stocks beat Nifty" : entry.stock_pct! < entry.nifty50_pct! ? "Stocks under Nifty" : "Matched"}
                       </p>
                     )}
                   </TooltipContent>
@@ -233,8 +263,12 @@ export function ReturnsComparisonChart({
       {/* Legend */}
       <div className="flex items-center gap-4 text-xs text-muted-foreground">
         <span className="flex items-center gap-1.5">
-          <span className="inline-block w-3 h-0.5 rounded" style={{ backgroundColor: YOU_COLOR }} />
-          You
+          <span className="inline-block w-3 h-0.5 rounded" style={{ backgroundColor: STOCK_COLOR }} />
+          Stocks
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block w-3 h-0.5 rounded" style={{ backgroundColor: MF_COLOR }} />
+          MF
         </span>
         <span className="flex items-center gap-1.5">
           <span className="inline-block w-3 h-0.5 rounded" style={{ backgroundColor: NIFTY_COLOR }} />

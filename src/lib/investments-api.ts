@@ -4,6 +4,7 @@ import type {
   InvestmentSettings,
   InvestmentFormData,
   InvestmentSettingsFormData,
+  RealisedTrade,
 } from "@/types/investments";
 
 // ── Fetch Logs ──────────────────────────────────────────────
@@ -21,9 +22,33 @@ export async function fetchInvestmentLogs(
   return (data ?? []).map((row) => ({
     ...row,
     pnl_amount: Number(row.pnl_amount),
-    returns_pct: row.returns_pct != null ? Number(row.returns_pct) : null,
+    stock_pct: row.stock_pct != null ? Number(row.stock_pct) : null,
+    mf_pct: row.mf_pct != null ? Number(row.mf_pct) : null,
     nifty50_pct: row.nifty50_pct != null ? Number(row.nifty50_pct) : null,
+    realised_pnl: row.realised_pnl != null ? Number(row.realised_pnl) : null,
   })) as InvestmentLog[];
+}
+
+// ── Realised Trades ─────────────────────────────────────────
+
+export async function fetchRealisedTrades(
+  userId: string,
+): Promise<RealisedTrade[]> {
+  const { data, error } = await supabase
+    .from("kite_realised_trades")
+    .select("*")
+    .eq("user_id", userId)
+    .order("trade_date", { ascending: false })
+    .limit(100);
+
+  if (error) throw error;
+  return (data ?? []).map((row) => ({
+    ...row,
+    quantity: Number(row.quantity),
+    avg_buy_price: Number(row.avg_buy_price),
+    sell_price: Number(row.sell_price),
+    realised_pnl: Number(row.realised_pnl),
+  })) as RealisedTrade[];
 }
 
 // ── Log CRUD ────────────────────────────────────────────────
@@ -39,7 +64,7 @@ export async function upsertInvestmentLog(
         user_id: userId,
         logged_date: formData.logged_date,
         pnl_amount: formData.pnl_amount,
-        returns_pct: formData.returns_pct ?? null,
+        stock_pct: formData.stock_pct ?? null,
         nifty50_pct: formData.nifty50_pct ?? null,
         note: formData.note || null,
       },
@@ -52,8 +77,10 @@ export async function upsertInvestmentLog(
   return {
     ...data,
     pnl_amount: Number(data.pnl_amount),
-    returns_pct: data.returns_pct != null ? Number(data.returns_pct) : null,
+    stock_pct: data.stock_pct != null ? Number(data.stock_pct) : null,
+    mf_pct: data.mf_pct != null ? Number(data.mf_pct) : null,
     nifty50_pct: data.nifty50_pct != null ? Number(data.nifty50_pct) : null,
+    realised_pnl: data.realised_pnl != null ? Number(data.realised_pnl) : null,
   } as InvestmentLog;
 }
 

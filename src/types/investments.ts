@@ -3,11 +3,27 @@ export interface InvestmentLog {
   user_id: string
   logged_date: string // "YYYY-MM-DD"
   pnl_amount: number
-  returns_pct: number | null
+  stock_pct: number | null
+  mf_pct: number | null
   nifty50_pct: number | null
+  realised_pnl: number | null
   note: string | null
   created_at: string
   updated_at: string
+}
+
+export interface RealisedTrade {
+  order_id: string
+  user_id: string
+  kind: "stock" | "mf"
+  symbol: string // tradingsymbol (stocks) / ISIN (MF)
+  name: string | null // scheme name for MF
+  quantity: number
+  avg_buy_price: number
+  sell_price: number
+  realised_pnl: number
+  trade_date: string // "YYYY-MM-DD"
+  created_at: string
 }
 
 export interface InvestmentSettings {
@@ -26,7 +42,7 @@ export interface InvestmentSettings {
 export interface InvestmentFormData {
   logged_date: string
   pnl_amount: number
-  returns_pct: number | null
+  stock_pct: number | null
   nifty50_pct: number | null
   note: string
 }
@@ -53,6 +69,8 @@ export interface InvestmentStats {
   comparableDays: number
   beatNiftyDays: number
   beatNiftyRate: number
+  realisedMonth: number
+  realisedAllTime: number
 }
 
 export const DEFAULT_SETTINGS: InvestmentSettingsFormData = {

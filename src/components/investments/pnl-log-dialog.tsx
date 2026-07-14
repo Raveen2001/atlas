@@ -31,8 +31,8 @@ export function PnlLogDialog({
   const [amount, setAmount] = useState("")
   const [isProfit, setIsProfit] = useState(true)
   const [logDate, setLogDate] = useState(format(new Date(), "yyyy-MM-dd"))
-  const [returnsPct, setReturnsPct] = useState("")
-  const [returnsPositive, setReturnsPositive] = useState(true)
+  const [stockPct, setStockPct] = useState("")
+  const [stockPositive, setStockPositive] = useState(true)
   const [nifty50Pct, setNifty50Pct] = useState("")
   const [niftyPositive, setNiftyPositive] = useState(true)
   const [note, setNote] = useState("")
@@ -44,12 +44,12 @@ export function PnlLogDialog({
       setAmount(absAmount.toString())
       setIsProfit(existingLog.pnl_amount >= 0)
       setLogDate(existingLog.logged_date)
-      if (existingLog.returns_pct != null) {
-        setReturnsPct(Math.abs(existingLog.returns_pct).toString())
-        setReturnsPositive(existingLog.returns_pct >= 0)
+      if (existingLog.stock_pct != null) {
+        setStockPct(Math.abs(existingLog.stock_pct).toString())
+        setStockPositive(existingLog.stock_pct >= 0)
       } else {
-        setReturnsPct("")
-        setReturnsPositive(true)
+        setStockPct("")
+        setStockPositive(true)
       }
       if (existingLog.nifty50_pct != null) {
         setNifty50Pct(Math.abs(existingLog.nifty50_pct).toString())
@@ -63,8 +63,8 @@ export function PnlLogDialog({
       setAmount("")
       setIsProfit(true)
       setLogDate(format(new Date(), "yyyy-MM-dd"))
-      setReturnsPct("")
-      setReturnsPositive(true)
+      setStockPct("")
+      setStockPositive(true)
       setNifty50Pct("")
       setNiftyPositive(true)
       setNote("")
@@ -76,14 +76,14 @@ export function PnlLogDialog({
     if (!amount || isNaN(parsed)) return
     setSaving(true)
     try {
-      const parsedReturns = returnsPct.trim() !== "" ? parseFloat(returnsPct) : null
+      const parsedStock = stockPct.trim() !== "" ? parseFloat(stockPct) : null
       const parsedNifty = nifty50Pct.trim() !== "" ? parseFloat(nifty50Pct) : null
       await onSave({
         logged_date: logDate,
         pnl_amount: isProfit ? Math.abs(parsed) : -Math.abs(parsed),
-        returns_pct:
-          parsedReturns != null && !isNaN(parsedReturns)
-            ? returnsPositive ? Math.abs(parsedReturns) : -Math.abs(parsedReturns)
+        stock_pct:
+          parsedStock != null && !isNaN(parsedStock)
+            ? stockPositive ? Math.abs(parsedStock) : -Math.abs(parsedStock)
             : null,
         nifty50_pct:
           parsedNifty != null && !isNaN(parsedNifty)
@@ -162,18 +162,18 @@ export function PnlLogDialog({
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Your Returns %</label>
+              <label className="text-sm font-medium">Stock Returns %</label>
               <div className="flex gap-1.5">
                 <button
                   type="button"
-                  onClick={() => setReturnsPositive((p) => !p)}
+                  onClick={() => setStockPositive((p) => !p)}
                   className={`h-9 w-9 shrink-0 rounded-md text-sm font-bold transition-colors ${
-                    returnsPositive
+                    stockPositive
                       ? "bg-green-600 text-white"
                       : "bg-red-600 text-white"
                   }`}
                 >
-                  {returnsPositive ? "+" : "−"}
+                  {stockPositive ? "+" : "−"}
                 </button>
                 <Input
                   type="number"
@@ -181,8 +181,8 @@ export function PnlLogDialog({
                   step="0.01"
                   min="0"
                   placeholder="0.00"
-                  value={returnsPct}
-                  onChange={(e) => setReturnsPct(e.target.value)}
+                  value={stockPct}
+                  onChange={(e) => setStockPct(e.target.value)}
                 />
               </div>
             </div>

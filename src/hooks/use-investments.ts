@@ -9,23 +9,27 @@ import type {
   InvestmentSettings,
   InvestmentFormData,
   InvestmentSettingsFormData,
+  RealisedTrade,
 } from "@/types/investments"
 
 export function useInvestments() {
   const { user } = useAuth()
   const [logs, setLogs] = useState<InvestmentLog[]>([])
+  const [trades, setTrades] = useState<RealisedTrade[]>([])
   const [settings, setSettings] = useState<InvestmentSettings | null>(null)
   const [loading, setLoading] = useState(true)
 
   const fetchAll = useCallback(async () => {
     if (!user) return
     try {
-      const [logsData, settingsData] = await Promise.all([
+      const [logsData, settingsData, tradesData] = await Promise.all([
         api.fetchInvestmentLogs(user.id),
         api.fetchInvestmentSettings(user.id),
+        api.fetchRealisedTrades(user.id),
       ])
       setLogs(logsData)
       setSettings(settingsData)
+      setTrades(tradesData)
     } catch (e) {
       toast.error("Failed to load investments")
       console.error(e)
@@ -94,6 +98,7 @@ export function useInvestments() {
 
   return {
     logs,
+    trades,
     settings,
     stats,
     todayLog,

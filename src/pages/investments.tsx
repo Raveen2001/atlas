@@ -8,6 +8,7 @@ import { PnlHeatmap } from "@/components/investments/pnl-heatmap"
 import { PnlBarChart } from "@/components/investments/pnl-bar-chart"
 import { MonthNavigator } from "@/components/investments/month-navigator"
 import { ReturnsComparisonChart } from "@/components/investments/returns-comparison-chart"
+import { RealisedTradesList } from "@/components/investments/realised-trades-list"
 import { InvestmentSettingsPanel } from "@/components/investments/investment-settings-panel"
 import { useInvestments } from "@/hooks/use-investments"
 import {
@@ -22,6 +23,7 @@ import type { InvestmentLog, InvestmentFormData } from "@/types/investments"
 export function InvestmentsPage() {
   const {
     logs,
+    trades,
     settings,
     stats,
     todayLog,
@@ -41,11 +43,11 @@ export function InvestmentsPage() {
   )
 
   const monthComparableDays = returnsData.filter(
-    (d) => d.returns_pct != null && d.nifty50_pct != null,
+    (d) => d.stock_pct != null && d.nifty50_pct != null,
   ).length
 
   const monthBeatDays = returnsData.filter(
-    (d) => d.returns_pct != null && d.nifty50_pct != null && d.returns_pct > d.nifty50_pct,
+    (d) => d.stock_pct != null && d.nifty50_pct != null && d.stock_pct > d.nifty50_pct,
   ).length
 
   const hasReturnsData = returnsData.some((d) => d.hasData)
@@ -99,15 +101,39 @@ export function InvestmentsPage() {
             <p className={`text-2xl font-bold font-mono ${getPnlColor(todayLog.pnl_amount)}`}>
               {formatPnl(todayLog.pnl_amount)}
             </p>
-            {todayLog.returns_pct != null && todayLog.nifty50_pct != null && (
+            {(todayLog.stock_pct != null || todayLog.mf_pct != null || todayLog.nifty50_pct != null) && (
+              <p className="text-xs text-muted-foreground mt-1 space-x-2">
+                {todayLog.stock_pct != null && (
+                  <span>
+                    Stocks{" "}
+                    <span className={getReturnsColor(todayLog.stock_pct)}>
+                      {formatReturnsPct(todayLog.stock_pct)}
+                    </span>
+                  </span>
+                )}
+                {todayLog.mf_pct != null && (
+                  <span>
+                    MF{" "}
+                    <span className={getReturnsColor(todayLog.mf_pct)}>
+                      {formatReturnsPct(todayLog.mf_pct)}
+                    </span>
+                  </span>
+                )}
+                {todayLog.nifty50_pct != null && (
+                  <span>
+                    Nifty{" "}
+                    <span className={getReturnsColor(todayLog.nifty50_pct)}>
+                      {formatReturnsPct(todayLog.nifty50_pct)}
+                    </span>
+                  </span>
+                )}
+              </p>
+            )}
+            {todayLog.realised_pnl != null && todayLog.realised_pnl !== 0 && (
               <p className="text-xs text-muted-foreground mt-1">
-                Returns{" "}
-                <span className={getReturnsColor(todayLog.returns_pct)}>
-                  {formatReturnsPct(todayLog.returns_pct)}
-                </span>
-                {" "}vs Nifty{" "}
-                <span className={getReturnsColor(todayLog.nifty50_pct)}>
-                  {formatReturnsPct(todayLog.nifty50_pct)}
+                Booked{" "}
+                <span className={getPnlColor(todayLog.realised_pnl)}>
+                  {formatPnl(todayLog.realised_pnl)}
                 </span>
               </p>
             )}
@@ -174,6 +200,16 @@ export function InvestmentsPage() {
           </section>
         )}
 
+        {/* Realised trades */}
+        {trades.length > 0 && (
+          <section className="space-y-3">
+            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+              Realised Trades
+            </h2>
+            <RealisedTradesList trades={trades} />
+          </section>
+        )}
+
         {/* History */}
         {logs.length > 0 && (
           <section className="space-y-3">
@@ -192,14 +228,30 @@ export function InvestmentsPage() {
                     <p className="text-sm">
                       {format(new Date(log.logged_date + "T00:00:00"), "EEE, MMM d")}
                     </p>
-                    {log.returns_pct != null && log.nifty50_pct != null && (
+                    {(log.stock_pct != null || log.mf_pct != null || log.nifty50_pct != null) && (
+                      <p className="text-xs text-muted-foreground space-x-1.5">
+                        {log.stock_pct != null && (
+                          <span className={getReturnsColor(log.stock_pct)}>
+                            S {formatReturnsPct(log.stock_pct)}
+                          </span>
+                        )}
+                        {log.mf_pct != null && (
+                          <span className={getReturnsColor(log.mf_pct)}>
+                            M {formatReturnsPct(log.mf_pct)}
+                          </span>
+                        )}
+                        {log.nifty50_pct != null && (
+                          <span className={getReturnsColor(log.nifty50_pct)}>
+                            N {formatReturnsPct(log.nifty50_pct)}
+                          </span>
+                        )}
+                      </p>
+                    )}
+                    {log.realised_pnl != null && log.realised_pnl !== 0 && (
                       <p className="text-xs text-muted-foreground">
-                        <span className={getReturnsColor(log.returns_pct)}>
-                          {formatReturnsPct(log.returns_pct)}
-                        </span>
-                        {" / "}
-                        <span className={getReturnsColor(log.nifty50_pct)}>
-                          {formatReturnsPct(log.nifty50_pct)}
+                        Booked{" "}
+                        <span className={getPnlColor(log.realised_pnl)}>
+                          {formatPnl(log.realised_pnl)}
                         </span>
                       </p>
                     )}

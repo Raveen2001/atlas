@@ -21,6 +21,30 @@ function json(body: unknown, status = 200) {
   })
 }
 
+// After 15:30 IST the market has closed — trigger the sync-pnl cron so this
+// user's freshly-connected token is used immediately instead of waiting for
+// the next scheduled run.
+function isAfterMarketCloseIST(): boolean {
+  const ist = new Date(Date.now() + 5.5 * 60 * 60 * 1000)
+  const minutesIST = ist.getUTCHours() * 60 + ist.getUTCMinutes()
+  return minutesIST >= 15 * 60 + 30
+}
+
+async function triggerSyncPnl(): Promise<void> {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/kite-sync-pnl`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        "Content-Type": "application/json",
+      },
+    })
+    console.log(`[KITE] Triggered kite-sync-pnl (status ${res.status})`)
+  } catch (e) {
+    console.error("[KITE] Failed to trigger kite-sync-pnl", e)
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS_HEADERS })
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405)
@@ -85,6 +109,14 @@ Deno.serve(async (req) => {
   if (upsertErr) {
     console.error("[KITE] Upsert failed", upsertErr)
     return json({ error: "Failed to store credentials" }, 500)
+  }
+
+  if (isAfterMarketCloseIST()) {
+    // Fire-and-forget: keep the response fast; don't block on the sync run.
+    // deno-lint-ignore no-explicit-any
+    const rt = (globalThis as any).EdgeRuntime
+    if (rt?.waitUntil) rt.waitUntil(triggerSyncPnl())
+    else triggerSyncPnl()
   }
 
   return json({

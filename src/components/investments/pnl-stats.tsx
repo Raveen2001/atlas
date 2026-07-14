@@ -35,6 +35,20 @@ export function PnlStats({ stats }: PnlStatsProps) {
           value={formatPnl(stats.allTime)}
           color={getPnlColor(stats.allTime)}
         />
+        {stats.realisedAllTime !== 0 && (
+          <>
+            <StatCard
+              label="Booked This Month"
+              value={formatPnl(stats.realisedMonth)}
+              color={getPnlColor(stats.realisedMonth)}
+            />
+            <StatCard
+              label="Booked All Time"
+              value={formatPnl(stats.realisedAllTime)}
+              color={getPnlColor(stats.realisedAllTime)}
+            />
+          </>
+        )}
       </div>
 
       {stats.totalDays > 0 && (
