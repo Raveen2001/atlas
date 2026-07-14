@@ -389,3 +389,9 @@ enabled = true
 verify_jwt = true
 import_map = "./functions/custom-reminders/deno.json"
 entrypoint = "./functions/custom-reminders/index.ts"
+
+[functions.kite-exchange-token]
+enabled = true
+verify_jwt = true
+import_map = "./functions/kite-exchange-token/deno.json"
+entrypoint = "./functions/kite-exchange-token/index.ts"

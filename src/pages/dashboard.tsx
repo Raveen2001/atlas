@@ -8,6 +8,7 @@ import { useInvestments } from "@/hooks/use-investments"
 import { useReminders } from "@/hooks/use-reminders"
 import { useIdeas } from "@/hooks/use-ideas"
 import { useAchievements } from "@/hooks/use-achievements"
+import { useKite } from "@/hooks/use-kite"
 import { formatPnl, getPnlColor } from "@/lib/investment-utils"
 
 export function DashboardPage() {
@@ -19,6 +20,14 @@ export function DashboardPage() {
   const { active } = useReminders()
   const { ideas } = useIdeas()
   const { achievements } = useAchievements()
+  const {
+    connected: kiteConnected,
+    expired: kiteExpired,
+    expiry: kiteExpiry,
+    credentials: kiteCreds,
+    loading: kiteLoading,
+    connect: connectKite,
+  } = useKite()
   const firstName = user?.user_metadata?.full_name?.split(" ")[0] ?? "there"
 
   const openTasks =
@@ -33,6 +42,51 @@ export function DashboardPage() {
       <PushPrompt />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <Card
+          className="cursor-pointer hover:bg-muted/50 transition-colors"
+          onClick={() => {
+            if (kiteLoading) return
+            if (!kiteConnected) connectKite()
+          }}
+        >
+          <CardHeader>
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Kite
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {kiteConnected ? (
+              <div>
+                <p className="text-lg font-semibold">Connected</p>
+                <p className="text-xs text-muted-foreground font-mono">
+                  {kiteCreds?.kite_username ?? kiteCreds?.kite_user_id}
+                </p>
+                {kiteExpiry && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Expires{" "}
+                    {kiteExpiry.toLocaleString("en-IN", {
+                      timeZone: "Asia/Kolkata",
+                      day: "2-digit",
+                      month: "short",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </p>
+                )}
+              </div>
+            ) : kiteExpired ? (
+              <div>
+                <p className="text-lg font-semibold text-destructive">Reconnect</p>
+                <p className="text-xs text-muted-foreground mt-1">Token expired</p>
+              </div>
+            ) : (
+              <p className="text-lg font-semibold text-primary">
+                {kiteLoading ? "…" : "Connect with Kite"}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
         <Card
           className="cursor-pointer hover:bg-muted/50 transition-colors"
           onClick={() => navigate("/tasks")}

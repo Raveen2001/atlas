@@ -15,6 +15,7 @@ import { IdeasPage } from "@/pages/ideas"
 import { AchievementsPage } from "@/pages/achievements"
 import { TrackerPage } from "@/pages/tracker"
 import { TrackerDetailPage } from "@/pages/tracker-detail"
+import { KiteCallbackPage } from "@/pages/kite-callback"
 
 function AppRoutes() {
   const { user, loading } = useAuth()
@@ -50,6 +51,7 @@ function AppRoutes() {
         <Route path="/achievements" element={<AchievementsPage />} />
         <Route path="/tracker" element={<TrackerPage />} />
         <Route path="/tracker/:categoryId" element={<TrackerDetailPage />} />
+        <Route path="/kite-callback" element={<KiteCallbackPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />
