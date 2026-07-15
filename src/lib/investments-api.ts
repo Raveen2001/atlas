@@ -19,14 +19,7 @@ export async function fetchInvestmentLogs(
     .order("logged_date", { ascending: false });
 
   if (error) throw error;
-  return (data ?? []).map((row) => ({
-    ...row,
-    pnl_amount: Number(row.pnl_amount),
-    stock_pct: row.stock_pct != null ? Number(row.stock_pct) : null,
-    mf_pct: row.mf_pct != null ? Number(row.mf_pct) : null,
-    nifty50_pct: row.nifty50_pct != null ? Number(row.nifty50_pct) : null,
-    realised_pnl: row.realised_pnl != null ? Number(row.realised_pnl) : null,
-  })) as InvestmentLog[];
+  return (data ?? []).map(mapInvestmentLog) as InvestmentLog[];
 }
 
 // ── Realised Trades ─────────────────────────────────────────
@@ -64,9 +57,14 @@ export async function upsertInvestmentLog(
         user_id: userId,
         logged_date: formData.logged_date,
         pnl_amount: formData.pnl_amount,
+        stock_pnl: formData.stock_pnl ?? null,
+        mf_pnl: formData.mf_pnl ?? null,
         stock_pct: formData.stock_pct ?? null,
         mf_pct: formData.mf_pct ?? null,
         nifty50_pct: formData.nifty50_pct ?? null,
+        realised_pnl: formData.realised_pnl ?? null,
+        realised_stock_pnl: formData.realised_stock_pnl ?? null,
+        realised_mf_pnl: formData.realised_mf_pnl ?? null,
         note: formData.note || null,
       },
       { onConflict: "user_id,logged_date" },
@@ -75,13 +73,23 @@ export async function upsertInvestmentLog(
     .single();
 
   if (error) throw error;
+  return mapInvestmentLog(data);
+}
+
+// Supabase returns numeric columns as strings — coerce to numbers (null-safe).
+function mapInvestmentLog(row: Record<string, unknown>): InvestmentLog {
+  const num = (v: unknown) => (v != null ? Number(v) : null);
   return {
-    ...data,
-    pnl_amount: Number(data.pnl_amount),
-    stock_pct: data.stock_pct != null ? Number(data.stock_pct) : null,
-    mf_pct: data.mf_pct != null ? Number(data.mf_pct) : null,
-    nifty50_pct: data.nifty50_pct != null ? Number(data.nifty50_pct) : null,
-    realised_pnl: data.realised_pnl != null ? Number(data.realised_pnl) : null,
+    ...row,
+    pnl_amount: Number(row.pnl_amount),
+    stock_pnl: num(row.stock_pnl),
+    mf_pnl: num(row.mf_pnl),
+    stock_pct: num(row.stock_pct),
+    mf_pct: num(row.mf_pct),
+    nifty50_pct: num(row.nifty50_pct),
+    realised_pnl: num(row.realised_pnl),
+    realised_stock_pnl: num(row.realised_stock_pnl),
+    realised_mf_pnl: num(row.realised_mf_pnl),
   } as InvestmentLog;
 }
 

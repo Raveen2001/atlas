@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { formatPnl, getPnlColor } from "@/lib/investment-utils"
 import type { InvestmentLog, InvestmentFormData } from "@/types/investments"
 
 interface PnlLogDialogProps {
@@ -21,6 +22,66 @@ interface PnlLogDialogProps {
   onDelete?: (logId: string) => Promise<void>
 }
 
+// A labelled numeric input paired with a +/− sign toggle. The value is kept
+// as an absolute-value string; the sign lives in `positive`.
+function SignedField({
+  label,
+  value,
+  positive,
+  onValueChange,
+  onToggle,
+  onEnter,
+}: {
+  label: string
+  value: string
+  positive: boolean
+  onValueChange: (v: string) => void
+  onToggle: () => void
+  onEnter?: () => void
+}) {
+  return (
+    <div className="space-y-1.5">
+      <label className="text-sm font-medium">{label}</label>
+      <div className="flex gap-1.5">
+        <button
+          type="button"
+          onClick={onToggle}
+          className={`h-9 w-9 shrink-0 rounded-md text-sm font-bold transition-colors ${
+            positive ? "bg-green-600 text-white" : "bg-red-600 text-white"
+          }`}
+        >
+          {positive ? "+" : "−"}
+        </button>
+        <Input
+          type="number"
+          inputMode="decimal"
+          step="0.01"
+          min="0"
+          placeholder="0.00"
+          value={value}
+          onChange={(e) => onValueChange(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && onEnter) {
+              e.preventDefault()
+              onEnter()
+            }
+          }}
+          className="min-w-0"
+        />
+      </div>
+    </div>
+  )
+}
+
+// Absolute-value string + sign → a signed number, or null when blank/invalid.
+function toSigned(value: string, positive: boolean): number | null {
+  const t = value.trim()
+  if (t === "") return null
+  const n = parseFloat(t)
+  if (isNaN(n)) return null
+  return positive ? Math.abs(n) : -Math.abs(n)
+}
+
 export function PnlLogDialog({
   open,
   onOpenChange,
@@ -28,83 +89,95 @@ export function PnlLogDialog({
   onSave,
   onDelete,
 }: PnlLogDialogProps) {
-  const [amount, setAmount] = useState("")
-  const [isProfit, setIsProfit] = useState(true)
   const [logDate, setLogDate] = useState(format(new Date(), "yyyy-MM-dd"))
+  const [stockPnl, setStockPnl] = useState("")
+  const [stockPnlPos, setStockPnlPos] = useState(true)
+  const [mfPnl, setMfPnl] = useState("")
+  const [mfPnlPos, setMfPnlPos] = useState(true)
   const [stockPct, setStockPct] = useState("")
-  const [stockPositive, setStockPositive] = useState(true)
+  const [stockPctPos, setStockPctPos] = useState(true)
   const [mfPct, setMfPct] = useState("")
-  const [mfPositive, setMfPositive] = useState(true)
-  const [nifty50Pct, setNifty50Pct] = useState("")
-  const [niftyPositive, setNiftyPositive] = useState(true)
+  const [mfPctPos, setMfPctPos] = useState(true)
+  const [niftyPct, setNiftyPct] = useState("")
+  const [niftyPctPos, setNiftyPctPos] = useState(true)
+  const [realisedStock, setRealisedStock] = useState("")
+  const [realisedStockPos, setRealisedStockPos] = useState(true)
+  const [realisedMf, setRealisedMf] = useState("")
+  const [realisedMfPos, setRealisedMfPos] = useState(true)
   const [note, setNote] = useState("")
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
+    // Populate an absolute-value string field + its sign toggle from a signed
+    // number (blank/positive when null).
+    const apply = (
+      val: number | null | undefined,
+      setVal: (v: string) => void,
+      setPos: (p: boolean) => void,
+    ) => {
+      if (val != null) {
+        setVal(Math.abs(val).toString())
+        setPos(val >= 0)
+      } else {
+        setVal("")
+        setPos(true)
+      }
+    }
+
     if (existingLog) {
-      const absAmount = Math.abs(existingLog.pnl_amount)
-      setAmount(absAmount.toString())
-      setIsProfit(existingLog.pnl_amount >= 0)
       setLogDate(existingLog.logged_date)
-      if (existingLog.stock_pct != null) {
-        setStockPct(Math.abs(existingLog.stock_pct).toString())
-        setStockPositive(existingLog.stock_pct >= 0)
-      } else {
-        setStockPct("")
-        setStockPositive(true)
-      }
-      if (existingLog.mf_pct != null) {
-        setMfPct(Math.abs(existingLog.mf_pct).toString())
-        setMfPositive(existingLog.mf_pct >= 0)
-      } else {
-        setMfPct("")
-        setMfPositive(true)
-      }
-      if (existingLog.nifty50_pct != null) {
-        setNifty50Pct(Math.abs(existingLog.nifty50_pct).toString())
-        setNiftyPositive(existingLog.nifty50_pct >= 0)
-      } else {
-        setNifty50Pct("")
-        setNiftyPositive(true)
-      }
+      // Prefer the explicit stock/MF split; for legacy rows that only have a
+      // combined total, seed Stock P&L with it so re-saving preserves the sum.
+      const hasSplit =
+        existingLog.stock_pnl != null || existingLog.mf_pnl != null
+      apply(
+        hasSplit ? existingLog.stock_pnl : existingLog.pnl_amount,
+        setStockPnl,
+        setStockPnlPos,
+      )
+      apply(hasSplit ? existingLog.mf_pnl : null, setMfPnl, setMfPnlPos)
+      apply(existingLog.stock_pct, setStockPct, setStockPctPos)
+      apply(existingLog.mf_pct, setMfPct, setMfPctPos)
+      apply(existingLog.nifty50_pct, setNiftyPct, setNiftyPctPos)
+      apply(existingLog.realised_stock_pnl, setRealisedStock, setRealisedStockPos)
+      apply(existingLog.realised_mf_pnl, setRealisedMf, setRealisedMfPos)
       setNote(existingLog.note ?? "")
     } else {
-      setAmount("")
-      setIsProfit(true)
       setLogDate(format(new Date(), "yyyy-MM-dd"))
-      setStockPct("")
-      setStockPositive(true)
-      setMfPct("")
-      setMfPositive(true)
-      setNifty50Pct("")
-      setNiftyPositive(true)
+      apply(null, setStockPnl, setStockPnlPos)
+      apply(null, setMfPnl, setMfPnlPos)
+      apply(null, setStockPct, setStockPctPos)
+      apply(null, setMfPct, setMfPctPos)
+      apply(null, setNiftyPct, setNiftyPctPos)
+      apply(null, setRealisedStock, setRealisedStockPos)
+      apply(null, setRealisedMf, setRealisedMfPos)
       setNote("")
     }
   }, [existingLog, open])
 
+  const stockNum = toSigned(stockPnl, stockPnlPos)
+  const mfNum = toSigned(mfPnl, mfPnlPos)
+  const hasAnyPnl = stockNum != null || mfNum != null
+  const totalPnl = (stockNum ?? 0) + (mfNum ?? 0)
+
   const handleSave = async () => {
-    const parsed = parseFloat(amount)
-    if (!amount || isNaN(parsed)) return
+    if (!hasAnyPnl) return
     setSaving(true)
     try {
-      const parsedStock = stockPct.trim() !== "" ? parseFloat(stockPct) : null
-      const parsedMf = mfPct.trim() !== "" ? parseFloat(mfPct) : null
-      const parsedNifty = nifty50Pct.trim() !== "" ? parseFloat(nifty50Pct) : null
+      const rStock = toSigned(realisedStock, realisedStockPos)
+      const rMf = toSigned(realisedMf, realisedMfPos)
+      const hasRealised = rStock != null || rMf != null
       await onSave({
         logged_date: logDate,
-        pnl_amount: isProfit ? Math.abs(parsed) : -Math.abs(parsed),
-        stock_pct:
-          parsedStock != null && !isNaN(parsedStock)
-            ? stockPositive ? Math.abs(parsedStock) : -Math.abs(parsedStock)
-            : null,
-        mf_pct:
-          parsedMf != null && !isNaN(parsedMf)
-            ? mfPositive ? Math.abs(parsedMf) : -Math.abs(parsedMf)
-            : null,
-        nifty50_pct:
-          parsedNifty != null && !isNaN(parsedNifty)
-            ? niftyPositive ? Math.abs(parsedNifty) : -Math.abs(parsedNifty)
-            : null,
+        pnl_amount: totalPnl,
+        stock_pnl: stockNum,
+        mf_pnl: mfNum,
+        stock_pct: toSigned(stockPct, stockPctPos),
+        mf_pct: toSigned(mfPct, mfPctPos),
+        nifty50_pct: toSigned(niftyPct, niftyPctPos),
+        realised_pnl: hasRealised ? (rStock ?? 0) + (rMf ?? 0) : null,
+        realised_stock_pnl: rStock,
+        realised_mf_pnl: rMf,
         note: note.trim(),
       })
       onOpenChange(false)
@@ -123,138 +196,79 @@ export function PnlLogDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>
-            {existingLog ? "Edit P&L" : "Log P&L"}
-          </DialogTitle>
+          <DialogTitle>{existingLog ? "Edit P&L" : "Log P&L"}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">Type</label>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setIsProfit(true)}
-                className={`flex-1 h-9 rounded-md text-sm font-medium transition-colors ${
-                  isProfit
-                    ? "bg-green-600 text-white"
-                    : "bg-muted text-muted-foreground hover:bg-muted/80"
-                }`}
-              >
-                Profit
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsProfit(false)}
-                className={`flex-1 h-9 rounded-md text-sm font-medium transition-colors ${
-                  !isProfit
-                    ? "bg-red-600 text-white"
-                    : "bg-muted text-muted-foreground hover:bg-muted/80"
-                }`}
-              >
-                Loss
-              </button>
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">Amount</label>
-            <Input
-              type="number"
-              inputMode="decimal"
-              step="0.01"
-              min="0"
-              placeholder="0.00"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && amount) {
-                  e.preventDefault()
-                  handleSave()
-                }
-              }}
+          <div className="grid grid-cols-2 gap-2">
+            <SignedField
+              label="Stock P&L"
+              value={stockPnl}
+              positive={stockPnlPos}
+              onValueChange={setStockPnl}
+              onToggle={() => setStockPnlPos((p) => !p)}
+              onEnter={handleSave}
+            />
+            <SignedField
+              label="MF P&L"
+              value={mfPnl}
+              positive={mfPnlPos}
+              onValueChange={setMfPnl}
+              onToggle={() => setMfPnlPos((p) => !p)}
+              onEnter={handleSave}
             />
           </div>
 
+          <div className="flex items-center justify-between rounded-md bg-muted px-3 py-2">
+            <span className="text-sm font-medium text-muted-foreground">
+              Total P&L
+            </span>
+            <span
+              className={`text-sm font-mono font-semibold ${getPnlColor(totalPnl)}`}
+            >
+              {formatPnl(totalPnl)}
+            </span>
+          </div>
+
           <div className="grid grid-cols-3 gap-2">
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">Stock %</label>
-              <div className="flex gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => setStockPositive((p) => !p)}
-                  className={`h-9 w-9 shrink-0 rounded-md text-sm font-bold transition-colors ${
-                    stockPositive
-                      ? "bg-green-600 text-white"
-                      : "bg-red-600 text-white"
-                  }`}
-                >
-                  {stockPositive ? "+" : "−"}
-                </button>
-                <Input
-                  type="number"
-                  inputMode="decimal"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                  value={stockPct}
-                  onChange={(e) => setStockPct(e.target.value)}
-                  className="min-w-0"
-                />
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">MF %</label>
-              <div className="flex gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => setMfPositive((p) => !p)}
-                  className={`h-9 w-9 shrink-0 rounded-md text-sm font-bold transition-colors ${
-                    mfPositive
-                      ? "bg-green-600 text-white"
-                      : "bg-red-600 text-white"
-                  }`}
-                >
-                  {mfPositive ? "+" : "−"}
-                </button>
-                <Input
-                  type="number"
-                  inputMode="decimal"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                  value={mfPct}
-                  onChange={(e) => setMfPct(e.target.value)}
-                  className="min-w-0"
-                />
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">Nifty %</label>
-              <div className="flex gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => setNiftyPositive((p) => !p)}
-                  className={`h-9 w-9 shrink-0 rounded-md text-sm font-bold transition-colors ${
-                    niftyPositive
-                      ? "bg-green-600 text-white"
-                      : "bg-red-600 text-white"
-                  }`}
-                >
-                  {niftyPositive ? "+" : "−"}
-                </button>
-                <Input
-                  type="number"
-                  inputMode="decimal"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                  value={nifty50Pct}
-                  onChange={(e) => setNifty50Pct(e.target.value)}
-                  className="min-w-0"
-                />
-              </div>
-            </div>
+            <SignedField
+              label="Stock %"
+              value={stockPct}
+              positive={stockPctPos}
+              onValueChange={setStockPct}
+              onToggle={() => setStockPctPos((p) => !p)}
+            />
+            <SignedField
+              label="MF %"
+              value={mfPct}
+              positive={mfPctPos}
+              onValueChange={setMfPct}
+              onToggle={() => setMfPctPos((p) => !p)}
+            />
+            <SignedField
+              label="Nifty %"
+              value={niftyPct}
+              positive={niftyPctPos}
+              onValueChange={setNiftyPct}
+              onToggle={() => setNiftyPctPos((p) => !p)}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <SignedField
+              label="Realised Stock"
+              value={realisedStock}
+              positive={realisedStockPos}
+              onValueChange={setRealisedStock}
+              onToggle={() => setRealisedStockPos((p) => !p)}
+            />
+            <SignedField
+              label="Realised MF"
+              value={realisedMf}
+              positive={realisedMfPos}
+              onValueChange={setRealisedMf}
+              onToggle={() => setRealisedMfPos((p) => !p)}
+            />
           </div>
 
           <div className="space-y-1.5">
@@ -291,11 +305,7 @@ export function PnlLogDialog({
               Delete
             </Button>
           )}
-          <Button
-            onClick={handleSave}
-            disabled={!amount || isNaN(parseFloat(amount)) || saving}
-            size="sm"
-          >
+          <Button onClick={handleSave} disabled={!hasAnyPnl || saving} size="sm">
             {saving ? "Saving..." : existingLog ? "Update" : "Log"}
           </Button>
         </DialogFooter>

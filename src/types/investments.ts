@@ -2,11 +2,15 @@ export interface InvestmentLog {
   id: string
   user_id: string
   logged_date: string // "YYYY-MM-DD"
-  pnl_amount: number
+  pnl_amount: number // combined day P&L = stock_pnl + mf_pnl
+  stock_pnl: number | null // equity mark-to-market day P&L
+  mf_pnl: number | null // MF day P&L (back-filled next run)
   stock_pct: number | null
   mf_pct: number | null
   nifty50_pct: number | null
-  realised_pnl: number | null
+  realised_pnl: number | null // combined = realised_stock_pnl + realised_mf_pnl
+  realised_stock_pnl: number | null
+  realised_mf_pnl: number | null
   note: string | null
   created_at: string
   updated_at: string
@@ -41,10 +45,15 @@ export interface InvestmentSettings {
 
 export interface InvestmentFormData {
   logged_date: string
-  pnl_amount: number
+  pnl_amount: number // derived = (stock_pnl ?? 0) + (mf_pnl ?? 0)
+  stock_pnl: number | null
+  mf_pnl: number | null
   stock_pct: number | null
   mf_pct: number | null
   nifty50_pct: number | null
+  realised_pnl: number | null // derived = (realised_stock_pnl ?? 0) + (realised_mf_pnl ?? 0)
+  realised_stock_pnl: number | null
+  realised_mf_pnl: number | null
   note: string
 }
 

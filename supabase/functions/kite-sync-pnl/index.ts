@@ -268,11 +268,11 @@ async function computeMfRealisedTrades(
   const loadSnapshots = async () => {
     if (snapshotRows != null) return snapshotRows;
     const { data } = await admin
-      .from("investment_logs")
+      .from("kite_holdings_snapshots")
       .select("mf_units")
       .eq("user_id", userId)
       .not("mf_units", "is", null)
-      .order("logged_date", { ascending: false })
+      .order("snapshot_date", { ascending: false })
       .limit(7);
     snapshotRows = (data ?? []).map(
       (r) => r.mf_units as Record<string, MFSnapshotValue>,
@@ -337,13 +337,24 @@ async function persistRealisedTrades(
   for (const d of dates) {
     const { data: rows, error: sumErr } = await admin
       .from("kite_realised_trades")
-      .select("realised_pnl")
+      .select("realised_pnl, kind")
       .eq("user_id", userId)
       .eq("trade_date", d);
     if (sumErr) return sumErr.message;
-    const total = round2(
-      (rows ?? []).reduce((s, r) => s + Number(r.realised_pnl), 0),
-    );
+    let stockTotal = 0;
+    let mfTotal = 0;
+    for (const r of rows ?? []) {
+      const v = Number(r.realised_pnl);
+      if (r.kind === "mf") mfTotal += v;
+      else stockTotal += v;
+    }
+    stockTotal = round2(stockTotal);
+    mfTotal = round2(mfTotal);
+    const fields = {
+      realised_pnl: round2(stockTotal + mfTotal),
+      realised_stock_pnl: stockTotal,
+      realised_mf_pnl: mfTotal,
+    };
 
     const { data: logRows } = await admin
       .from("investment_logs")
@@ -355,7 +366,7 @@ async function persistRealisedTrades(
       ? (
           await admin
             .from("investment_logs")
-            .update({ realised_pnl: total })
+            .update(fields)
             .eq("id", logRows[0].id)
         ).error
       : (
@@ -363,7 +374,7 @@ async function persistRealisedTrades(
             user_id: userId,
             logged_date: d,
             pnl_amount: 0,
-            realised_pnl: total,
+            ...fields,
           })
         ).error;
     if (err) return err.message;
@@ -484,20 +495,41 @@ async function syncUser(
   // row (it's the closest anchor we have).
   let backfilledDate: string | null = null;
 
-  const { data: candidateRows } = await admin
+  // Candidate = most recent prior day whose log still lacks mf_pct AND has an
+  // mf_units snapshot. Snapshots now live in kite_holdings_snapshots, so fetch
+  // a small window of each and match by date in memory.
+  const { data: priorLogs } = await admin
     .from("investment_logs")
-    .select("id, logged_date, pnl_amount, mf_pct, mf_units")
+    .select("id, logged_date, pnl_amount, stock_pnl, mf_pct")
     .eq("user_id", userId)
     .lt("logged_date", loggedDate)
     .is("mf_pct", null)
-    .not("mf_units", "is", null)
     .order("logged_date", { ascending: false })
-    .limit(1);
-  const candidate = candidateRows?.[0];
+    .limit(10);
+  const { data: priorSnaps } = await admin
+    .from("kite_holdings_snapshots")
+    .select("snapshot_date, mf_units")
+    .eq("user_id", userId)
+    .lt("snapshot_date", loggedDate)
+    .not("mf_units", "is", null)
+    .order("snapshot_date", { ascending: false })
+    .limit(10);
+  const snapByDate = new Map<string, Record<string, MFSnapshotValue>>(
+    (priorSnaps ?? []).map((s) => [
+      s.snapshot_date as string,
+      s.mf_units as Record<string, MFSnapshotValue>,
+    ]),
+  );
+  const candidate = (priorLogs ?? []).find((l) =>
+    snapByDate.has(l.logged_date as string),
+  );
+  const candidateUnits = candidate
+    ? snapByDate.get(candidate.logged_date as string)
+    : undefined;
 
-  if (candidate && candidate.mf_units) {
+  if (candidate && candidateUnits) {
     // Normalize both snapshot shapes (legacy number / new {units, avg_price}).
-    const rawUnits = candidate.mf_units as Record<string, MFSnapshotValue>;
+    const rawUnits = candidateUnits;
     const units: Record<string, number> = {};
     for (const [isin, v] of Object.entries(rawUnits)) {
       const q = snapshotUnits(v);
@@ -557,20 +589,29 @@ async function syncUser(
       // steady state but keeps the update from silently no-oping).
       const { data: navDateRows } = await admin
         .from("investment_logs")
-        .select("id, pnl_amount")
+        .select("id, pnl_amount, stock_pnl")
         .eq("user_id", userId)
         .eq("logged_date", latestNavDate)
         .limit(1);
       const target = navDateRows?.[0] ?? {
         id: candidate.id,
         pnl_amount: candidate.pnl_amount,
+        stock_pnl: candidate.stock_pnl,
       };
-      const targetPnl = Number(target.pnl_amount) + mfDayPnL;
+      // Base = equity-only day P&L; fall back to pnl_amount for legacy rows
+      // written before stock_pnl existed.
+      const baseStock =
+        target.stock_pnl != null
+          ? Number(target.stock_pnl)
+          : Number(target.pnl_amount);
+      const mfRounded = Math.round(mfDayPnL * 100) / 100;
 
       const { error: updErr } = await admin
         .from("investment_logs")
         .update({
-          pnl_amount: Math.round(targetPnl * 100) / 100,
+          pnl_amount: Math.round((baseStock + mfDayPnL) * 100) / 100,
+          stock_pnl: Math.round(baseStock * 100) / 100,
+          mf_pnl: mfRounded,
           mf_pct: mfPct != null ? Math.round(mfPct * 100) / 100 : null,
         })
         .eq("id", target.id);
@@ -594,6 +635,8 @@ async function syncUser(
   }
 
   // ── Write today's row ────────────────────────────────────────
+  // pnl_amount/stock_pnl carry today's equity mark-to-market; mf_pnl stays
+  // null until the following run back-fills it once the NAV publishes.
   const pnlAmount = Math.round(stockDayPnL * 100) / 100;
   const stockRounded =
     stockPct != null ? Math.round(stockPct * 100) / 100 : null;
@@ -605,27 +648,47 @@ async function syncUser(
       user_id: userId,
       logged_date: loggedDate,
       pnl_amount: pnlAmount,
+      stock_pnl: pnlAmount,
+      mf_pnl: null,
       stock_pct: stockRounded,
       mf_pct: null,
       nifty50_pct: niftyRounded,
-      mf_units: mfUnitsJson,
-      stock_holdings: stockHoldingsJson,
     },
     { onConflict: "user_id,logged_date" },
   );
 
   if (upsertErr) return { status: "save_error", error: upsertErr.message };
 
+  // ── Snapshot today's holdings (separate table) ───────────────
+  // mf_units feeds the next run's NAV back-fill; both feed realised-sell
+  // cost-basis fallback when a scrip/fund is fully sold and drops out of the
+  // holdings API.
+  const { error: snapErr } = await admin.from("kite_holdings_snapshots").upsert(
+    {
+      user_id: userId,
+      snapshot_date: loggedDate,
+      mf_units: mfUnitsJson,
+      stock_holdings: stockHoldingsJson,
+    },
+    { onConflict: "user_id,snapshot_date" },
+  );
+  if (snapErr) {
+    console.error(
+      `[KITE-SYNC-PNL] Snapshot save failed for ${userId.slice(0, 8)}:`,
+      snapErr.message,
+    );
+  }
+
   // ── Realised P&L (stock sells today + MF redemptions completed) ──
   let prevSnapshot: StockSnapshot | null = null;
   if (orders.some(isCompletedCncSell)) {
     const { data: prevRows } = await admin
-      .from("investment_logs")
+      .from("kite_holdings_snapshots")
       .select("stock_holdings")
       .eq("user_id", userId)
-      .lt("logged_date", loggedDate)
+      .lt("snapshot_date", loggedDate)
       .not("stock_holdings", "is", null)
-      .order("logged_date", { ascending: false })
+      .order("snapshot_date", { ascending: false })
       .limit(1);
     prevSnapshot = (prevRows?.[0]?.stock_holdings as StockSnapshot) ?? null;
   }
