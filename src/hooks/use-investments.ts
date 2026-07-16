@@ -3,6 +3,7 @@ import { format } from "date-fns"
 import { toast } from "sonner"
 import { useAuth } from "@/hooks/use-auth"
 import * as api from "@/lib/investments-api"
+import { resyncKitePnl } from "@/lib/kite-api"
 import { computeInvestmentStats } from "@/lib/investment-utils"
 import type {
   InvestmentLog,
@@ -18,6 +19,7 @@ export function useInvestments() {
   const [trades, setTrades] = useState<RealisedTrade[]>([])
   const [settings, setSettings] = useState<InvestmentSettings | null>(null)
   const [loading, setLoading] = useState(true)
+  const [resyncing, setResyncing] = useState(false)
 
   const fetchAll = useCallback(async () => {
     if (!user) return
@@ -56,6 +58,27 @@ export function useInvestments() {
     },
     [user, fetchAll],
   )
+
+  const resync = useCallback(async () => {
+    if (resyncing) return
+    setResyncing(true)
+    try {
+      const result = await resyncKitePnl()
+      if (result.skipped === "weekend") {
+        toast.info("Market closed for the weekend — nothing to sync")
+      } else if (result.synced === 0) {
+        toast.warning("No fresh Kite token — reconnect Kite, then resync")
+      } else {
+        toast.success("P&L resynced from Kite")
+      }
+      await fetchAll()
+    } catch (e) {
+      toast.error("Resync failed")
+      console.error(e)
+    } finally {
+      setResyncing(false)
+    }
+  }, [resyncing, fetchAll])
 
   const deleteLog = useCallback(
     async (logId: string) => {
@@ -103,7 +126,9 @@ export function useInvestments() {
     stats,
     todayLog,
     loading,
+    resyncing,
     logPnl,
+    resync,
     deleteLog,
     updateSettings,
     refetch: fetchAll,

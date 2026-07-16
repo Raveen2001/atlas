@@ -51,6 +51,24 @@ export async function disconnectKite(userId: string): Promise<void> {
   if (error) throw error
 }
 
+export type KiteSyncResult = {
+  synced?: number
+  stale?: number
+  skipped?: string
+  error?: string
+  [key: string]: unknown
+}
+
+// Manually trigger the kite-sync-pnl edge function (same one the daily cron
+// runs). Returns its summary so the caller can surface weekend/stale-token cases.
+export async function resyncKitePnl(): Promise<KiteSyncResult> {
+  const { data, error } = await supabase.functions.invoke("kite-sync-pnl", {
+    body: {},
+  })
+  if (error) throw error
+  return (data ?? {}) as KiteSyncResult
+}
+
 const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000
 
 export function getKiteTokenExpiry(loginTimeISO: string | null | undefined): Date | null {

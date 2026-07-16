@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react"
 import { format, startOfMonth } from "date-fns"
-import { Plus } from "lucide-react"
+import { Plus, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { PnlLogDialog } from "@/components/investments/pnl-log-dialog"
 import { PnlStats } from "@/components/investments/pnl-stats"
@@ -28,7 +28,9 @@ export function InvestmentsPage() {
     stats,
     todayLog,
     loading,
+    resyncing,
     logPnl,
+    resync,
     deleteLog,
     updateSettings,
   } = useInvestments()
@@ -84,10 +86,23 @@ export function InvestmentsPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold tracking-tight">Investments</h1>
-          <Button size="sm" onClick={openCreate}>
-            <Plus className="h-4 w-4 mr-1" />
-            Log P&L
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={resync}
+              disabled={resyncing}
+            >
+              <RefreshCw
+                className={`h-4 w-4 mr-1 ${resyncing ? "animate-spin" : ""}`}
+              />
+              {resyncing ? "Syncing…" : "Resync"}
+            </Button>
+            <Button size="sm" onClick={openCreate}>
+              <Plus className="h-4 w-4 mr-1" />
+              Log P&L
+            </Button>
+          </div>
         </div>
 
         {/* Today status */}

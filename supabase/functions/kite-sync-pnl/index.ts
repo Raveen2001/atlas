@@ -19,6 +19,14 @@ const KITE_FN_SERVICE_KEY = Deno.env.get("KITE_FN_SERVICE_KEY");
 const TZ = "Asia/Kolkata";
 const MFAPI_LOOKBACK_DAYS = 10;
 
+// Allow browser invokes (Resync button) in addition to the cron trigger.
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+const JSON_HEADERS = { "Content-Type": "application/json", ...CORS_HEADERS };
+
 type Holding = {
   tradingsymbol: string;
   quantity: number;
@@ -785,7 +793,9 @@ async function syncUser(
   };
 }
 
-Deno.serve(async (_req) => {
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS_HEADERS });
+
   const startTime = Date.now();
   const now = moment().tz(TZ);
   const dayOfWeek = now.day();
@@ -803,7 +813,7 @@ Deno.serve(async (_req) => {
     console.log("[KITE-SYNC-PNL] Weekend — skipping");
     return new Response(
       JSON.stringify({ skipped: "weekend", elapsed: Date.now() - startTime }),
-      { headers: { "Content-Type": "application/json" } },
+      { headers: JSON_HEADERS },
     );
   }
 
@@ -836,7 +846,7 @@ Deno.serve(async (_req) => {
           stale: (creds ?? []).length,
           elapsed: Date.now() - startTime,
         }),
-        { headers: { "Content-Type": "application/json" } },
+        { headers: JSON_HEADERS },
       );
     }
 
@@ -943,13 +953,13 @@ Deno.serve(async (_req) => {
     };
     console.log("[KITE-SYNC-PNL] Done:", JSON.stringify(summary));
     return new Response(JSON.stringify(summary), {
-      headers: { "Content-Type": "application/json" },
+      headers: JSON_HEADERS,
     });
   } catch (e) {
     console.error("[KITE-SYNC-PNL] Fatal:", e);
     return new Response(
       JSON.stringify({ error: String(e), elapsed: Date.now() - startTime }),
-      { status: 500, headers: { "Content-Type": "application/json" } },
+      { status: 500, headers: JSON_HEADERS },
     );
   }
 });
