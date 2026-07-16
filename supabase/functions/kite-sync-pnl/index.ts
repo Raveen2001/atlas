@@ -11,6 +11,11 @@ const KITE_API_KEY = Deno.env.get("KITE_API_KEY")!;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
+// Optional cross-project trigger: forward each user's live Kite creds to a
+// kite-holdings edge function in another Supabase project. No-op if unset.
+const KITE_FN_URL = Deno.env.get("KITE_FN_URL");
+const KITE_FN_SERVICE_KEY = Deno.env.get("KITE_FN_SERVICE_KEY");
+
 const TZ = "Asia/Kolkata";
 const MFAPI_LOOKBACK_DAYS = 10;
 
@@ -156,6 +161,52 @@ async function fetchNiftyReturnPct(): Promise<number | null> {
   } catch (e) {
     console.error("[KITE-SYNC-PNL] Yahoo fetch failed:", e);
     return null;
+  }
+}
+
+// ── Cross-project trigger (kite-holdings in another project) ───
+// Uses plain fetch rather than supabase.functions.invoke, which assumes the
+// client's own project. Best-effort: never throws — the caller logs failures
+// and the sync result is unaffected. Returns "not configured" when the env
+// vars are absent so the caller can silently skip.
+async function triggerExternalKiteFn(
+  kiteAnalyserUserId: string,
+  accessToken: string,
+): Promise<{ ok: boolean; status?: number; error?: string }> {
+  if (!KITE_FN_URL || !KITE_FN_SERVICE_KEY) {
+    return { ok: false, error: "not configured" };
+  }
+  try {
+    const res = await fetch(KITE_FN_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${KITE_FN_SERVICE_KEY}`,
+      },
+      body: JSON.stringify({
+        // The other project keys users by its own id, not the Atlas uuid.
+        user_id: kiteAnalyserUserId,
+        api_key: KITE_API_KEY,
+        access_token: accessToken,
+      }),
+    });
+    // kite-holdings returns { error, detail } with a 4xx/5xx status on failure.
+    let body: unknown = null;
+    try {
+      body = await res.json();
+    } catch {
+      // non-JSON body — ignore
+    }
+    if (!res.ok) {
+      return {
+        ok: false,
+        status: res.status,
+        error: body != null ? JSON.stringify(body) : `HTTP ${res.status}`,
+      };
+    }
+    return { ok: true, status: res.status };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
   }
 }
 
@@ -759,11 +810,12 @@ Deno.serve(async (_req) => {
   try {
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    const cutoff = moment.tz(
-      now.format("YYYY-MM-DD") + " 06:00",
-      "YYYY-MM-DD HH:mm",
-      TZ,
-    );
+    // Kite tokens die at 06:00 IST and stay valid until the *next* 06:00. So a
+    // token is fresh if it was generated at/after the most recent 06:00 IST
+    // boundary that has already passed — today's 06:00 once we're past it, else
+    // yesterday's (this run can fire before 06:00 IST).
+    const cutoff = now.clone().hour(6).minute(0).second(0).millisecond(0);
+    if (now.isBefore(cutoff)) cutoff.subtract(1, "day");
     const { data: creds, error: credsErr } = await admin
       .from("kite_credentials")
       .select("user_id, access_token, login_time");
@@ -798,6 +850,33 @@ Deno.serve(async (_req) => {
     let realisedTrades = 0;
     let kiteErrors = 0;
     let saveErrors = 0;
+    let externalTriggered = 0;
+    let externalErrors = 0;
+
+    // Atlas user_id → Kite Analyser user_id, fetched once for all fresh users.
+    // Only users with a mapping get forwarded to the external function.
+    const analyserByUser = new Map<string, string>();
+    if (KITE_FN_URL && KITE_FN_SERVICE_KEY) {
+      const { data: analyserRows, error: analyserErr } = await admin
+        .from("kite_analyser_users")
+        .select("user_id, kite_analyser_user_id")
+        .in(
+          "user_id",
+          fresh.map((c) => c.user_id),
+        );
+      if (analyserErr) {
+        console.error(
+          "[KITE-SYNC-PNL] Failed to load analyser mappings:",
+          analyserErr.message,
+        );
+      } else {
+        for (const r of analyserRows ?? [])
+          analyserByUser.set(
+            r.user_id as string,
+            r.kite_analyser_user_id as string,
+          );
+      }
+    }
 
     for (const cred of fresh) {
       const result = await syncUser(
@@ -824,6 +903,29 @@ Deno.serve(async (_req) => {
         saveErrors++;
         console.error(`[KITE-SYNC-PNL] ✗ save ${tag}... ${result.error}`);
       }
+
+      // Forward this user's live Kite creds to the external kite-holdings
+      // function, keyed by their Kite Analyser user id. Skip when the token is
+      // already known dead (kite_error) or the user has no analyser mapping.
+      // Best-effort throughout.
+      if (result.status !== "kite_error") {
+        const analyserId = analyserByUser.get(cred.user_id);
+        if (analyserId) {
+          const ext = await triggerExternalKiteFn(analyserId, cred.access_token);
+          if (ext.ok) {
+            externalTriggered++;
+          } else if (ext.error !== "not configured") {
+            externalErrors++;
+            console.error(
+              `[KITE-SYNC-PNL] ✗ external ${tag}... ${ext.status ?? ""} ${ext.error}`.trim(),
+            );
+          }
+        } else if (KITE_FN_URL && KITE_FN_SERVICE_KEY) {
+          console.warn(
+            `[KITE-SYNC-PNL] no analyser mapping for ${tag}... — skipping external call`,
+          );
+        }
+      }
     }
 
     const summary = {
@@ -832,6 +934,8 @@ Deno.serve(async (_req) => {
       realised_trades: realisedTrades,
       kite_errors: kiteErrors,
       save_errors: saveErrors,
+      external_triggered: externalTriggered,
+      external_errors: externalErrors,
       fresh_users: fresh.length,
       total_creds: (creds ?? []).length,
       nifty_pct: niftyPct,
