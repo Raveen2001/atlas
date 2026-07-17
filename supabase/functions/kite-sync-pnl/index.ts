@@ -554,15 +554,17 @@ async function syncUser(
   // row (it's the closest anchor we have).
   let backfilledDate: string | null = null;
 
-  // Candidate = most recent prior day whose log still lacks mf_pct AND has an
-  // mf_units snapshot. Snapshots now live in kite_holdings_snapshots, so fetch
-  // a small window of each and match by date in memory.
+  // Candidate = most recent prior day that has an mf_units snapshot. We no
+  // longer skip days whose mf_pct is already filled: MFAPI only lets us
+  // recompute the latest NAV day's P&L anyway, so recomputing each run makes
+  // the backfill idempotent and lets a manual Resync overwrite a stale value.
+  // Snapshots now live in kite_holdings_snapshots, so fetch a small window of
+  // each and match by date in memory.
   const { data: priorLogs } = await admin
     .from("investment_logs")
     .select("id, logged_date, pnl_amount, stock_pnl, mf_pct")
     .eq("user_id", userId)
     .lt("logged_date", loggedDate)
-    .is("mf_pct", null)
     .order("logged_date", { ascending: false })
     .limit(10);
   const { data: priorSnaps } = await admin
