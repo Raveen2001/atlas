@@ -19,13 +19,13 @@ import {
 
 const primaryItems = [
   { to: "/", icon: LayoutDashboard, label: "Home" },
-  { to: "/tasks", icon: CheckSquare, label: "Tasks" },
   { to: "/habits", icon: Repeat, label: "Habits" },
   { to: "/tracker", icon: LineChart, label: "Tracker" },
+  { to: "/investments", icon: TrendingUp, label: "Investments" },
 ]
 
 const overflowItems = [
-  { to: "/investments", icon: TrendingUp, label: "Investments" },
+  { to: "/tasks", icon: CheckSquare, label: "Tasks" },
   { to: "/reminders", icon: Bell, label: "Reminders" },
   { to: "/ideas", icon: Lightbulb, label: "Ideas" },
   { to: "/achievements", icon: Trophy, label: "Achievements" },
