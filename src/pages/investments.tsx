@@ -1,11 +1,13 @@
 import { useState, useMemo } from "react"
 import { format, startOfMonth } from "date-fns"
-import { Plus, RefreshCw } from "lucide-react"
+import { Plus, RefreshCw, ChevronRight, BarChart3 } from "lucide-react"
+import { Link } from "react-router"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { PnlLogDialog } from "@/components/investments/pnl-log-dialog"
 import { PnlStats } from "@/components/investments/pnl-stats"
-import { PnlHeatmap } from "@/components/investments/pnl-heatmap"
-import { PnlBarChart } from "@/components/investments/pnl-bar-chart"
+import { PnlCalendar } from "@/components/investments/pnl-calendar"
+import { CumulativePnlChart } from "@/components/investments/cumulative-pnl-chart"
 import { MonthNavigator } from "@/components/investments/month-navigator"
 import { ReturnsComparisonChart } from "@/components/investments/returns-comparison-chart"
 import { RealisedTradesList } from "@/components/investments/realised-trades-list"
@@ -49,7 +51,10 @@ export function InvestmentsPage() {
   ).length
 
   const monthBeatDays = returnsData.filter(
-    (d) => d.stock_pct != null && d.nifty50_pct != null && d.stock_pct > d.nifty50_pct,
+    (d) =>
+      d.stock_pct != null &&
+      d.nifty50_pct != null &&
+      d.stock_pct > d.nifty50_pct,
   ).length
 
   const hasReturnsData = returnsData.some((d) => d.hasData)
@@ -110,13 +115,17 @@ export function InvestmentsPage() {
           <button
             type="button"
             onClick={() => openEdit(todayLog)}
-            className="w-full text-left rounded-lg border p-3 hover:bg-muted/50 transition-colors"
+            className="w-full text-left rounded-xl border p-4 hover:bg-muted/50 transition-colors"
           >
             <p className="text-xs text-muted-foreground">Today's P&L</p>
-            <p className={`text-2xl font-bold font-mono ${getPnlColor(todayLog.pnl_amount)}`}>
+            <p
+              className={`text-3xl font-bold font-mono ${getPnlColor(todayLog.pnl_amount)}`}
+            >
               {formatPnl(todayLog.pnl_amount)}
             </p>
-            {(todayLog.stock_pct != null || todayLog.mf_pct != null || todayLog.nifty50_pct != null) && (
+            {(todayLog.stock_pct != null ||
+              todayLog.mf_pct != null ||
+              todayLog.nifty50_pct != null) && (
               <p className="text-xs text-muted-foreground mt-1 space-x-2">
                 {todayLog.stock_pct != null && (
                   <span>
@@ -153,20 +162,22 @@ export function InvestmentsPage() {
               </p>
             )}
             {todayLog.note && (
-              <p className="text-xs text-muted-foreground mt-1">{todayLog.note}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {todayLog.note}
+              </p>
             )}
           </button>
         ) : (
           <button
             type="button"
             onClick={openCreate}
-            className="w-full rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground hover:bg-muted/50 transition-colors"
+            className="w-full rounded-xl border border-dashed p-4 text-center text-sm text-muted-foreground hover:bg-muted/50 transition-colors"
           >
             Today's P&L not logged yet. Tap to log.
           </button>
         )}
 
-        {/* Overview */}
+        {/* Overview stats */}
         <section className="space-y-3">
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
             Overview
@@ -174,65 +185,100 @@ export function InvestmentsPage() {
           <PnlStats stats={stats} />
         </section>
 
-        {/* Month bar chart with navigation */}
+        {/* Cumulative P&L curve */}
+        {logs.length >= 2 && (
+          <Card size="sm">
+            <CardHeader>
+              <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                Cumulative P&L
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <CumulativePnlChart logs={logs} />
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Calendar heatmap */}
         {logs.length > 0 && (
-          <section className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-                P&L
-              </h2>
+          <Card size="sm">
+            <CardHeader>
+              <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                Calendar
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <PnlCalendar logs={logs} />
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Breakdown link */}
+        {logs.length > 0 && (
+          <Link
+            to="/investments/breakdown"
+            className="flex items-center justify-between rounded-xl border p-4 hover:bg-muted/50 transition-colors"
+          >
+            <span className="flex items-center gap-3">
+              <BarChart3 className="h-5 w-5 text-primary" />
+              <span>
+                <span className="block text-sm font-medium">
+                  Full P&L breakdown
+                </span>
+                <span className="block text-xs text-muted-foreground">
+                  Daily · Weekly · Monthly · Yearly
+                </span>
+              </span>
+            </span>
+            <ChevronRight className="h-5 w-5 text-muted-foreground" />
+          </Link>
+        )}
+
+        {/* Returns vs Nifty 50 */}
+        {logs.length > 0 && (
+          <Card size="sm">
+            <CardHeader className="flex-row items-center justify-between">
+              <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                Returns vs Nifty 50
+              </CardTitle>
               <MonthNavigator
                 month={selectedMonth}
                 onMonthChange={setSelectedMonth}
                 logs={logs}
               />
+            </CardHeader>
+            <CardContent>
+              {hasReturnsData ? (
+                <ReturnsComparisonChart
+                  data={returnsData}
+                  beatDays={monthBeatDays}
+                  comparableDays={monthComparableDays}
+                />
+              ) : (
+                <div className="flex h-52 items-center justify-center text-sm text-muted-foreground">
+                  No returns data for this month
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Recent history */}
+        {logs.length > 0 && (
+          <section className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                Recent
+              </h2>
+              <Link
+                to="/investments/breakdown"
+                className="text-xs text-primary hover:underline"
+              >
+                See all
+              </Link>
             </div>
-            <PnlBarChart logs={logs} month={selectedMonth} />
-          </section>
-        )}
-
-        {/* Returns vs Nifty 50 */}
-        {logs.length > 0 && hasReturnsData && (
-          <section className="space-y-3">
-            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-              Returns vs Nifty 50
-            </h2>
-            <ReturnsComparisonChart
-              data={returnsData}
-              beatDays={monthBeatDays}
-              comparableDays={monthComparableDays}
-            />
-          </section>
-        )}
-
-        {/* Heatmap */}
-        {logs.length > 0 && (
-          <section className="space-y-3">
-            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-              Last 12 Months
-            </h2>
-            <PnlHeatmap logs={logs} />
-          </section>
-        )}
-
-        {/* Realised trades */}
-        {trades.length > 0 && (
-          <section className="space-y-3">
-            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-              Realised Trades
-            </h2>
-            <RealisedTradesList trades={trades} />
-          </section>
-        )}
-
-        {/* History */}
-        {logs.length > 0 && (
-          <section className="space-y-3">
-            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-              History
-            </h2>
             <div className="space-y-1">
-              {logs.slice(0, 30).map((log) => (
+              {logs.slice(0, 8).map((log) => (
                 <button
                   key={log.id}
                   type="button"
@@ -241,9 +287,14 @@ export function InvestmentsPage() {
                 >
                   <div>
                     <p className="text-sm">
-                      {format(new Date(log.logged_date + "T00:00:00"), "EEE, MMM d")}
+                      {format(
+                        new Date(log.logged_date + "T00:00:00"),
+                        "EEE, MMM d",
+                      )}
                     </p>
-                    {(log.stock_pct != null || log.mf_pct != null || log.nifty50_pct != null) && (
+                    {(log.stock_pct != null ||
+                      log.mf_pct != null ||
+                      log.nifty50_pct != null) && (
                       <p className="text-xs text-muted-foreground space-x-1.5">
                         {log.stock_pct != null && (
                           <span className={getReturnsColor(log.stock_pct)}>
@@ -287,6 +338,16 @@ export function InvestmentsPage() {
           </section>
         )}
 
+        {/* Realised trades */}
+        {trades.length > 0 && (
+          <section className="space-y-3">
+            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+              Realised Trades
+            </h2>
+            <RealisedTradesList trades={trades} />
+          </section>
+        )}
+
         {/* Empty state */}
         {logs.length === 0 && (
           <div className="text-center py-12">
@@ -305,10 +366,7 @@ export function InvestmentsPage() {
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
             Reminders
           </h2>
-          <InvestmentSettingsPanel
-            settings={settings}
-            onUpdate={updateSettings}
-          />
+          <InvestmentSettingsPanel settings={settings} onUpdate={updateSettings} />
         </section>
       </div>
 

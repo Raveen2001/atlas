@@ -5,6 +5,7 @@ import {
   startOfMonth,
   endOfMonth,
   eachDayOfInterval,
+  eachWeekOfInterval,
   isWeekend,
   isFuture,
   isThisMonth,
@@ -102,34 +103,186 @@ export function getPnlColor(amount: number): string {
   return "text-muted-foreground"
 }
 
-export interface PnlHeatmapEntry {
-  amount: number | null
-  isWeekend: boolean
+export function isTradingDay(date: Date): boolean {
+  return !isWeekend(date)
 }
 
-export function getPnlHeatmapData(
-  logs: InvestmentLog[],
-  startDate: Date,
-  endDate: Date,
-): Map<string, PnlHeatmapEntry> {
-  const map = new Map<string, PnlHeatmapEntry>()
-  const logMap = new Map<string, number>()
-  for (const log of logs) {
-    logMap.set(log.logged_date, log.pnl_amount)
-  }
+// ── P&L aggregation (cumulative curve + period buckets) ─────────
 
-  const days = eachDayOfInterval({ start: startDate, end: endDate })
-  for (const day of days) {
-    const dateStr = format(day, "yyyy-MM-dd")
-    const amount = logMap.get(dateStr) ?? null
-    map.set(dateStr, { amount, isWeekend: isWeekend(day) })
-  }
+export type Granularity = "daily" | "weekly" | "monthly" | "yearly"
 
+export interface CumulativePoint {
+  date: Date
+  dateStr: string
+  total: number
+  stock: number
+  mf: number
+}
+
+/**
+ * Running total of P&L over every logged day (oldest → newest). `total` always
+ * accumulates `pnl_amount`; `stock`/`mf` accumulate their split (treating null as 0
+ * so the lines stay continuous). This is the "portfolio over time" growth curve.
+ */
+export function getCumulativePnlSeries(logs: InvestmentLog[]): CumulativePoint[] {
+  const sorted = [...logs].sort((a, b) =>
+    a.logged_date.localeCompare(b.logged_date),
+  )
+  let total = 0
+  let stock = 0
+  let mf = 0
+  return sorted.map((l) => {
+    total += l.pnl_amount
+    stock += l.stock_pnl ?? 0
+    mf += l.mf_pnl ?? 0
+    return {
+      date: new Date(l.logged_date + "T00:00:00"),
+      dateStr: l.logged_date,
+      total,
+      stock,
+      mf,
+    }
+  })
+}
+
+export interface PnlBucket {
+  key: string
+  label: string
+  start: Date
+  total: number
+  stock: number | null // null when no day in the bucket had a stock split
+  mf: number | null
+  dayCount: number // logged trading days in the bucket (0 = no data / gap)
+  best: number
+  worst: number
+}
+
+function groupByKey<T>(items: T[], keyFn: (item: T) => string): Map<string, T[]> {
+  const map = new Map<string, T[]>()
+  for (const it of items) {
+    const k = keyFn(it)
+    const arr = map.get(k)
+    if (arr) arr.push(it)
+    else map.set(k, [it])
+  }
   return map
 }
 
-export function isTradingDay(date: Date): boolean {
-  return !isWeekend(date)
+function makeBucket(
+  key: string,
+  label: string,
+  start: Date,
+  logs: InvestmentLog[],
+): PnlBucket {
+  let total = 0
+  let stock = 0
+  let mf = 0
+  let hasStock = false
+  let hasMf = false
+  let best = -Infinity
+  let worst = Infinity
+  for (const l of logs) {
+    total += l.pnl_amount
+    if (l.stock_pnl != null) {
+      stock += l.stock_pnl
+      hasStock = true
+    }
+    if (l.mf_pnl != null) {
+      mf += l.mf_pnl
+      hasMf = true
+    }
+    if (l.pnl_amount > best) best = l.pnl_amount
+    if (l.pnl_amount < worst) worst = l.pnl_amount
+  }
+  return {
+    key,
+    label,
+    start,
+    total,
+    stock: hasStock ? stock : null,
+    mf: hasMf ? mf : null,
+    dayCount: logs.length,
+    best: best === -Infinity ? 0 : best,
+    worst: worst === Infinity ? 0 : worst,
+  }
+}
+
+/** Trading days of `month` (future days in the current month excluded). */
+export function getDailyBuckets(
+  logs: InvestmentLog[],
+  month: Date,
+): PnlBucket[] {
+  const viewingCurrentMonth = isThisMonth(month)
+  const logMap = new Map<string, InvestmentLog>()
+  for (const l of logs) logMap.set(l.logged_date, l)
+
+  return eachDayOfInterval({
+    start: startOfMonth(month),
+    end: endOfMonth(month),
+  })
+    .filter((d) => !isWeekend(d) && (!viewingCurrentMonth || !isFuture(d)))
+    .map((d) => {
+      const dateStr = format(d, "yyyy-MM-dd")
+      const l = logMap.get(dateStr)
+      return makeBucket(dateStr, format(d, "d"), d, l ? [l] : [])
+    })
+}
+
+/** Most-recent `weeks` ISO weeks (Mon-start), oldest → newest, continuous axis. */
+export function getWeeklyBuckets(
+  logs: InvestmentLog[],
+  weeks = 16,
+): PnlBucket[] {
+  if (logs.length === 0) return []
+  const byWeek = groupByKey(logs, (l) =>
+    format(
+      startOfWeek(new Date(l.logged_date + "T00:00:00"), { weekStartsOn: 1 }),
+      "yyyy-MM-dd",
+    ),
+  )
+  const dates = logs.map((l) => l.logged_date).sort()
+  const earliest = startOfWeek(new Date(dates[0] + "T00:00:00"), {
+    weekStartsOn: 1,
+  })
+  const thisWeek = startOfWeek(new Date(), { weekStartsOn: 1 })
+  const allWeeks = eachWeekOfInterval(
+    { start: earliest, end: thisWeek },
+    { weekStartsOn: 1 },
+  )
+  return allWeeks.slice(-weeks).map((ws) => {
+    const key = format(ws, "yyyy-MM-dd")
+    return makeBucket(key, format(ws, "d MMM"), ws, byWeek.get(key) ?? [])
+  })
+}
+
+/** All 12 months of `year`. */
+export function getMonthlyBuckets(
+  logs: InvestmentLog[],
+  year: number,
+): PnlBucket[] {
+  const byMonth = groupByKey(logs, (l) => l.logged_date.slice(0, 7))
+  const result: PnlBucket[] = []
+  for (let m = 0; m < 12; m++) {
+    const start = new Date(year, m, 1)
+    const key = `${year}-${String(m + 1).padStart(2, "0")}`
+    result.push(makeBucket(key, format(start, "MMM"), start, byMonth.get(key) ?? []))
+  }
+  return result
+}
+
+/** One bucket per calendar year, earliest logged year → current year. */
+export function getYearlyBuckets(logs: InvestmentLog[]): PnlBucket[] {
+  if (logs.length === 0) return []
+  const byYear = groupByKey(logs, (l) => l.logged_date.slice(0, 4))
+  const years = [...byYear.keys()].map(Number)
+  const min = Math.min(...years)
+  const max = Math.max(...years, new Date().getFullYear())
+  const result: PnlBucket[] = []
+  for (let y = min; y <= max; y++) {
+    const key = String(y)
+    result.push(makeBucket(key, key, new Date(y, 0, 1), byYear.get(key) ?? []))
+  }
+  return result
 }
 
 const pctFormat = new Intl.NumberFormat("en-IN", {
