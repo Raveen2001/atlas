@@ -10,6 +10,7 @@ import { TasksPage } from "@/pages/tasks"
 import { RemindersPage } from "@/pages/reminders"
 import { InvestmentsPage } from "@/pages/investments"
 import { InvestmentsBreakdownPage } from "@/pages/investments-breakdown"
+import { InvestmentsStocksPage } from "@/pages/investments-stocks"
 import { TasksClosedPage } from "@/pages/tasks-closed"
 import { HabitsPage } from "@/pages/habits"
 import { IdeasPage } from "@/pages/ideas"
@@ -52,6 +53,10 @@ function AppRoutes() {
         <Route
           path="/investments/breakdown"
           element={<InvestmentsBreakdownPage />}
+        />
+        <Route
+          path="/investments/stocks"
+          element={<InvestmentsStocksPage />}
         />
         <Route path="/ideas" element={<IdeasPage />} />
         <Route path="/achievements" element={<AchievementsPage />} />

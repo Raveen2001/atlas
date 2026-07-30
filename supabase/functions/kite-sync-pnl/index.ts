@@ -69,7 +69,17 @@ type MFOrder = {
 // carry { units, avg_price } so cost basis survives a full redemption.
 type MFSnapshotValue = number | { units: number; avg_price: number | null };
 
-type StockSnapshot = Record<string, { qty: number; avg_price: number }>;
+// last_price/close_price are optional: legacy rows predate them. They power
+// the frontend stocks page (per-stock market value / day P&L display).
+type StockSnapshot = Record<
+  string,
+  {
+    qty: number;
+    avg_price: number;
+    last_price?: number;
+    close_price?: number;
+  }
+>;
 
 type RealisedTradeRow = {
   order_id: string;
@@ -538,6 +548,8 @@ async function syncUser(
       stockHoldings[h.tradingsymbol] = {
         qty: Number(h.quantity),
         avg_price: Number(h.average_price) || 0,
+        last_price: Number(h.last_price) || 0,
+        close_price: Number(h.close_price) || 0,
       };
     }
   }
