@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react"
 import { format, startOfMonth } from "date-fns"
-import { Plus, RefreshCw, ChevronRight, BarChart3, Briefcase } from "lucide-react"
+import { Plus, RefreshCw, ChevronRight, BarChart3, Briefcase, TrendingUp } from "lucide-react"
 import { Link } from "react-router"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -250,6 +250,27 @@ export function InvestmentsPage() {
           </span>
           <ChevronRight className="h-5 w-5 text-muted-foreground" />
         </Link>
+
+        {/* Performance link */}
+        {logs.length > 0 && (
+          <Link
+            to="/investments/performance"
+            className="flex items-center justify-between rounded-xl border p-4 hover:bg-muted/50 transition-colors"
+          >
+            <span className="flex items-center gap-3">
+              <TrendingUp className="h-5 w-5 text-primary" />
+              <span>
+                <span className="block text-sm font-medium">
+                  Performance vs Nifty 50
+                </span>
+                <span className="block text-xs text-muted-foreground">
+                  Stocks · MF · Benchmark
+                </span>
+              </span>
+            </span>
+            <ChevronRight className="h-5 w-5 text-muted-foreground" />
+          </Link>
+        )}
 
         {/* Returns vs Nifty 50 */}
         {logs.length > 0 && (

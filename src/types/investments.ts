@@ -8,6 +8,9 @@ export interface InvestmentLog {
   stock_pct: number | null
   mf_pct: number | null
   nifty50_pct: number | null
+  stock_base_value: number | null // equity value at start of day
+  mf_base_value: number | null // MF value at start of day
+  nifty_pnl: number | null // same capital invested in Nifty 50 instead
   realised_pnl: number | null // combined = realised_stock_pnl + realised_mf_pnl
   realised_stock_pnl: number | null
   realised_mf_pnl: number | null

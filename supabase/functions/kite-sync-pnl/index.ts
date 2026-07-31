@@ -581,7 +581,9 @@ async function syncUser(
   // each and match by date in memory.
   const { data: priorLogs } = await admin
     .from("investment_logs")
-    .select("id, logged_date, pnl_amount, stock_pnl, mf_pct")
+    .select(
+      "id, logged_date, pnl_amount, stock_pnl, mf_pct, nifty50_pct, stock_base_value",
+    )
     .eq("user_id", userId)
     .lt("logged_date", loggedDate)
     .order("logged_date", { ascending: false })
@@ -669,7 +671,7 @@ async function syncUser(
       // steady state but keeps the update from silently no-oping).
       const { data: navDateRows } = await admin
         .from("investment_logs")
-        .select("id, pnl_amount, stock_pnl")
+        .select("id, pnl_amount, stock_pnl, nifty50_pct, stock_base_value")
         .eq("user_id", userId)
         .eq("logged_date", latestNavDate)
         .limit(1);
@@ -677,6 +679,8 @@ async function syncUser(
         id: candidate.id,
         pnl_amount: candidate.pnl_amount,
         stock_pnl: candidate.stock_pnl,
+        nifty50_pct: candidate.nifty50_pct,
+        stock_base_value: candidate.stock_base_value,
       };
       // Base = equity-only day P&L; fall back to pnl_amount for legacy rows
       // written before stock_pnl existed.
@@ -686,14 +690,34 @@ async function syncUser(
           : Number(target.pnl_amount);
       const mfRounded = Math.round(mfDayPnL * 100) / 100;
 
+      // Now that both sleeves are known, restate the benchmark in rupees:
+      // the whole book (equity + MF) invested in the index instead.
+      const mfBase = prevValue > 0 ? round2(prevValue) : null;
+      const targetNiftyPct =
+        target.nifty50_pct != null ? Number(target.nifty50_pct) : null;
+      const combinedBase =
+        (target.stock_base_value != null
+          ? Number(target.stock_base_value)
+          : 0) + (mfBase ?? 0);
+      const niftyPnl =
+        targetNiftyPct != null && combinedBase > 0
+          ? round2((targetNiftyPct / 100) * combinedBase)
+          : null;
+
+      const updatePayload: Record<string, unknown> = {
+        pnl_amount: Math.round((baseStock + mfDayPnL) * 100) / 100,
+        stock_pnl: Math.round(baseStock * 100) / 100,
+        mf_pnl: mfRounded,
+        mf_pct: mfPct != null ? Math.round(mfPct * 100) / 100 : null,
+        mf_base_value: mfBase,
+      };
+      // Leave any earlier equity-only figure intact when the index return or
+      // the base value is missing, rather than blanking it.
+      if (niftyPnl != null) updatePayload.nifty_pnl = niftyPnl;
+
       const { error: updErr } = await admin
         .from("investment_logs")
-        .update({
-          pnl_amount: Math.round((baseStock + mfDayPnL) * 100) / 100,
-          stock_pnl: Math.round(baseStock * 100) / 100,
-          mf_pnl: mfRounded,
-          mf_pct: mfPct != null ? Math.round(mfPct * 100) / 100 : null,
-        })
+        .update(updatePayload)
         .eq("id", target.id);
 
       if (updErr) {
@@ -723,6 +747,15 @@ async function syncUser(
   const niftyRounded =
     niftyPct != null ? Math.round(niftyPct * 100) / 100 : null;
 
+  // Benchmark in rupees: today's index move applied to the money actually
+  // invested. MF has no published NAV yet, so this covers equity only — the
+  // next run's back-fill restates it across both sleeves.
+  const stockBase = stockPrevValue > 0 ? round2(stockPrevValue) : null;
+  const niftyPnlToday =
+    niftyPct != null && stockBase != null
+      ? round2((niftyPct / 100) * stockBase)
+      : null;
+
   const { error: upsertErr } = await admin.from("investment_logs").upsert(
     {
       user_id: userId,
@@ -733,6 +766,9 @@ async function syncUser(
       stock_pct: stockRounded,
       mf_pct: null,
       nifty50_pct: niftyRounded,
+      stock_base_value: stockBase,
+      mf_base_value: null,
+      nifty_pnl: niftyPnlToday,
     },
     { onConflict: "user_id,logged_date" },
   );
