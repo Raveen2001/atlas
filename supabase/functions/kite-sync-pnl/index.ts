@@ -30,10 +30,17 @@ const JSON_HEADERS = { "Content-Type": "application/json", ...CORS_HEADERS };
 type Holding = {
   tradingsymbol: string;
   quantity: number;
+  // Shares bought but not yet settled (T+1) live here, NOT in quantity.
+  // Day P&L and snapshots must count both or recent buys are missed.
+  t1_quantity: number;
   average_price: number;
   last_price: number;
   close_price: number;
 };
+
+function holdingQty(h: Holding): number {
+  return Number(h.quantity) + Number(h.t1_quantity || 0);
+}
 
 type Order = {
   order_id: string;
@@ -517,11 +524,11 @@ async function syncUser(
   // ── Today's stock numbers (delivery holdings only) ──────────
   const stockDayPnL = holdings.reduce(
     (s, h) =>
-      s + (Number(h.last_price) - Number(h.close_price)) * Number(h.quantity),
+      s + (Number(h.last_price) - Number(h.close_price)) * holdingQty(h),
     0,
   );
   const stockPrevValue = holdings.reduce(
-    (s, h) => s + Number(h.close_price) * Number(h.quantity),
+    (s, h) => s + Number(h.close_price) * holdingQty(h),
     0,
   );
   const stockPct =
@@ -544,9 +551,9 @@ async function syncUser(
   // ── Snapshot today's stock holdings (cost basis for future sells) ──
   const stockHoldings: StockSnapshot = {};
   for (const h of holdings) {
-    if (h.tradingsymbol && Number(h.quantity) > 0) {
+    if (h.tradingsymbol && holdingQty(h) > 0) {
       stockHoldings[h.tradingsymbol] = {
-        qty: Number(h.quantity),
+        qty: holdingQty(h),
         avg_price: Number(h.average_price) || 0,
         last_price: Number(h.last_price) || 0,
         close_price: Number(h.close_price) || 0,
