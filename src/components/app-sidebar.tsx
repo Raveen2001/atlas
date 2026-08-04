@@ -8,6 +8,7 @@ import {
   Lightbulb,
   LineChart,
   Trophy,
+  Package,
   LogOut,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -21,6 +22,7 @@ const navItems = [
   { to: "/habits", icon: Repeat, label: "Habits" },
   { to: "/reminders", icon: Bell, label: "Reminders" },
   { to: "/investments", icon: TrendingUp, label: "Investments" },
+  { to: "/assets", icon: Package, label: "Assets" },
   { to: "/tracker", icon: LineChart, label: "Tracker" },
   { to: "/ideas", icon: Lightbulb, label: "Ideas" },
   { to: "/achievements", icon: Trophy, label: "Achievements" },

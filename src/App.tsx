@@ -18,6 +18,7 @@ import { IdeasPage } from "@/pages/ideas"
 import { AchievementsPage } from "@/pages/achievements"
 import { TrackerPage } from "@/pages/tracker"
 import { TrackerDetailPage } from "@/pages/tracker-detail"
+import { AssetsPage } from "@/pages/assets"
 import { KiteCallbackPage } from "@/pages/kite-callback"
 import { KiteLoginPage } from "@/pages/kite-login"
 
@@ -63,6 +64,7 @@ function AppRoutes() {
           path="/investments/performance"
           element={<InvestmentsPerformancePage />}
         />
+        <Route path="/assets" element={<AssetsPage />} />
         <Route path="/ideas" element={<IdeasPage />} />
         <Route path="/achievements" element={<AchievementsPage />} />
         <Route path="/tracker" element={<TrackerPage />} />
