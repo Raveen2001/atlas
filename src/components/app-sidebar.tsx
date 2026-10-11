@@ -9,6 +9,7 @@ import {
   LineChart,
   Trophy,
   Package,
+  Clock,
   LogOut,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -18,6 +19,7 @@ import { useAuth } from "@/hooks/use-auth"
 
 const navItems = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard" },
+  { to: "/activities", icon: Clock, label: "Activities" },
   { to: "/tasks", icon: CheckSquare, label: "Tasks" },
   { to: "/habits", icon: Repeat, label: "Habits" },
   { to: "/reminders", icon: Bell, label: "Reminders" },

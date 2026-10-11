@@ -1,4 +1,6 @@
+import { useMemo } from "react"
 import { useNavigate } from "react-router"
+import { addDays, startOfDay } from "date-fns"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { PushPrompt } from "@/components/push-prompt"
 import { useAuth } from "@/hooks/use-auth"
@@ -9,7 +11,9 @@ import { useReminders } from "@/hooks/use-reminders"
 import { useIdeas } from "@/hooks/use-ideas"
 import { useAchievements } from "@/hooks/use-achievements"
 import { useKite } from "@/hooks/use-kite"
+import { useActivities } from "@/hooks/use-activities"
 import { formatPnl, getPnlColor } from "@/lib/investment-utils"
+import { formatDuration, summarizeDay } from "@/lib/activity-utils"
 
 export function DashboardPage() {
   const navigate = useNavigate()
@@ -28,6 +32,17 @@ export function DashboardPage() {
     loading: kiteLoading,
     connect: connectKite,
   } = useKite()
+  const today = useMemo(() => startOfDay(new Date()), [])
+  const tomorrow = useMemo(() => addDays(today, 1), [today])
+  const {
+    activities,
+    running: runningActivity,
+    now: activitiesNow,
+  } = useActivities(today, tomorrow)
+  const todayActivity = useMemo(
+    () => summarizeDay(activities, today, activitiesNow),
+    [activities, today, activitiesNow],
+  )
   const firstName = user?.user_metadata?.full_name?.split(" ")[0] ?? "there"
 
   const openTasks =
@@ -84,6 +99,35 @@ export function DashboardPage() {
                 {kiteLoading ? "…" : "Connect with Kite"}
               </p>
             )}
+          </CardContent>
+        </Card>
+
+        <Card
+          className="cursor-pointer hover:bg-muted/50 transition-colors"
+          onClick={() => navigate("/activities")}
+        >
+          <CardHeader>
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              Today
+              {runningActivity && (
+                <span
+                  className="h-2 w-2 rounded-full bg-red-500 animate-pulse"
+                  title={`Timer running: ${runningActivity.title}`}
+                />
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-3xl font-bold font-mono">
+              {formatDuration(todayActivity.logged)}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              logged ·{" "}
+              <span className="text-red-600 font-mono">
+                {formatDuration(todayActivity.byRating.wasted)}
+              </span>{" "}
+              wasted
+            </p>
           </CardContent>
         </Card>
 

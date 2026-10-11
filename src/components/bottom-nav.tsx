@@ -9,6 +9,7 @@ import {
   LineChart,
   Trophy,
   Package,
+  Clock,
   MoreHorizontal,
 } from "lucide-react"
 import {
@@ -26,6 +27,7 @@ const primaryItems = [
 ]
 
 const overflowItems = [
+  { to: "/activities", icon: Clock, label: "Activities" },
   { to: "/tasks", icon: CheckSquare, label: "Tasks" },
   { to: "/assets", icon: Package, label: "Assets" },
   { to: "/reminders", icon: Bell, label: "Reminders" },
